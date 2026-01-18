@@ -1,0 +1,62 @@
+???? Twilio Service Initialized:
+   SID: EXISTS
+   FROM: whatsapp:+14155238886
+   NUM: 14155238886
+???? Starting Phase 2 Verification...
+??? Database connected successfully
+??? Category and Product "Rice" ready.
+??? User state cleared.
+
+--- TEST 1: FUZZY SEARCH ("10 kg ricce") ---
+???? Webhook Received Payload: {
+  "From": "whatsapp:977987654321",
+  "Body": "10 kg ricce",
+  "ProfileName": "Test"
+}
+???? Processed Message from 977987654321: "10 kg ricce"
+???? User State for 977987654321: IDLE
+
+[WHATSAPP TO 977987654321]:
+???? *Confirm Order?*
+
+Product: *Rice*
+Qty: 10 kg
+Est. Total: Rs. 500
+
+Reply *Yes* to confirm or *No* to cancel.
+-------------------
+
+--- TEST 2: SUPPORT FLOW ---
+???? Webhook Received Payload: {
+  "From": "whatsapp:977987654321",
+  "Body": "support"
+}
+???? Processed Message from 977987654321: "support"
+???? User State for 977987654321: IDLE
+
+[WHATSAPP TO 977987654321]:
+???? *Customer Support*
+
+Please describe the issue you are facing or what you need help with.
+
+Our team will review it and get back to you.
+-------------------
+???? Webhook Received Payload: {
+  "From": "whatsapp:977987654321",
+  "Body": "My order is late!"
+}
+???? Processed Message from 977987654321: "My order is late!"
+???? User State for 977987654321: AWAITING_SUPPORT_MESSAGE
+
+[WHATSAPP TO 977987654321]:
+??? *Ticket Created!*
+
+Your Ticket ID: *TKT-2076*
+
+Our team has received your message: "My order is late!"
+
+We will get back to you shortly. Thank you!
+-------------------
+??? Support Ticket Created: TKT-2076 - My order is late!
+
+???? Verification Complete.

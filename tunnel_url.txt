@@ -1,0 +1,1 @@
+https://moody-seas-see.loca.lt/api/v1/whatsapp/webhook

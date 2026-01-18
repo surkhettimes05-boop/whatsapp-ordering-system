@@ -1,0 +1,851 @@
+// ============================================================================
+// PRODUCTION-GRADE PRISMA SCHEMA
+// Nepal-Scale B2B Trade Platform
+// ============================================================================
+// 
+// DESIGN PRINCIPLES:
+// 1. Database-level constraints for data integrity
+// 2. Comprehensive indexing for performance at scale
+// 3. Immutable ledger (no updates/deletes)
+// 4. Soft delete for audit trail
+// 5. Enums for type safety and state management
+// 6. Optimized for PostgreSQL
+//
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS - Type Safety & State Management
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  WHOLESALER
+  RETAILER
+  SUPPORT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED // Soft delete
+}
+
+enum OrderStatus {
+  CREATED
+  PENDING_BIDS
+  CREDIT_APPROVED
+  STOCK_RESERVED
+  WHOLESALER_ACCEPTED
+  CONFIRMED
+  PROCESSING
+  PACKED
+  OUT_FOR_DELIVERY
+  SHIPPED
+  DELIVERED
+  FAILED
+  CANCELLED
+  RETURNED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+  ADJUSTMENT
+  REVERSAL
+}
+
+enum LedgerEntryCreator {
+  SYSTEM
+  ADMIN
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMode {
+  COD
+  ONLINE
+  CHEQUE
+  BANK_TRANSFER
+  CASH
+}
+
+enum StockReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+  EXPIRED
+}
+
+enum CreditStatus {
+  ACTIVE
+  PAUSED
+  BLOCKED
+  SUSPENDED
+}
+
+enum WebhookEventType {
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_CANCELLED
+  OFFER_SUBMITTED
+  OFFER_ACCEPTED
+  PAYMENT_RECEIVED
+  STOCK_UPDATED
+}
+
+enum WebhookStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+// ============================================================================
+// USER & AUTHENTICATION MODELS
+// ============================================================================
+
+model Admin {
+  id            String         @id @default(cuid())
+  userId        String         @unique // References User.id
+  name          String
+  email         String?        @unique
+  phoneNumber   String         @unique
+  whatsappNumber String?       @unique // Optional for admins
+  isActive      Boolean        @default(true)
+  deletedAt     DateTime?      // Soft delete
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs     AdminAuditLog[]
+  apiKeys       ApiKey[]
+  
+  @@index([email])
+  @@index([phoneNumber])
+  @@index([deletedAt])
+  @@map("admins")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  phoneNumber   String         @unique
+  whatsappNumber String        @unique // ENFORCED: Unique WhatsApp per user
+  name          String
+  email         String?        @unique
+  passwordHash  String?
+  role          UserRole       @default(ADMIN)
+  status        UserStatus     @default(ACTIVE)
+  deletedAt     DateTime?      // Soft delete
+  lastLoginAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  admin         Admin?
+  conversations Conversation[]
+  
+  @@index([phoneNumber])
+  @@index([whatsappNumber])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// ============================================================================
+// RETAILER MODEL
+// ============================================================================
+
+model Retailer {
+  id                 String                     @id @default(cuid())
+  pasalName          String?
+  ownerName          String?
+  phoneNumber        String                     @unique
+  whatsappNumber     String                     @unique // ENFORCED: Unique WhatsApp
+  email              String?                    @unique
+  status             UserStatus                 @default(ACTIVE)
+  city               String?
+  district           String?                    // Nepal-specific
+  address            String?
+  latitude           Float?
+  longitude          Float?
+  conversationState  String?
+  creditStatus       CreditStatus               @default(ACTIVE)
+  creditPausedAt     DateTime?
+  creditPauseReason  String?
+  deletedAt          DateTime?                  // Soft delete
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  
+  // Relations
+  auditLogs          AuditLog[]
+  conversations      Conversation[]
+  credit             CreditAccount?
+  creditHolds        CreditHoldHistory[]
+  creditTransactions CreditTransaction[]
+  ledgerEntries      LedgerEntry[]
+  orders             Order[]
+  routingHistory     OrderRouting[]
+  payments           RetailerPayment[]
+  wholesalerCredits  RetailerWholesalerCredit[]
+  ratings            WholesalerRating[]
+  
+  @@index([phoneNumber])
+  @@index([whatsappNumber])
+  @@index([email])
+  @@index([status])
+  @@index([city])
+  @@index([creditStatus])
+  @@index([deletedAt])
+  @@map("retailers")
+}
+
+// ============================================================================
+// WHOLESALER MODEL
+// ============================================================================
+
+model Wholesaler {
+  id                String                     @id @default(cuid())
+  businessName      String
+  ownerName         String
+  phoneNumber       String                     @unique
+  whatsappNumber    String                     @unique // ENFORCED: Unique WhatsApp
+  email             String?                    @unique
+  gstNumber         String?                    @unique
+  businessAddress   String
+  city              String
+  district          String?                    // Nepal-specific
+  state             String
+  pincode           String
+  latitude          Float
+  longitude         Float
+  reliabilityScore  Float                      @default(50)
+  totalOrders       Int                        @default(0)
+  completedOrders   Int                        @default(0)
+  cancelledOrders   Int                        @default(0)
+  averageRating     Float                      @default(0)
+  totalRevenue      Decimal                    @default(0)
+  isActive          Boolean                    @default(true)
+  isVerified        Boolean                    @default(false)
+  capacity          Int                        @default(10)
+  currentOrders     Int                        @default(0)
+  categories        String
+  deliveryRadius    Float                      @default(50)
+  minimumOrder      Decimal                    @default(0)
+  deliveryCharges   Decimal                    @default(0)
+  operatingHours    String                     @default("{\"monday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"tuesday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"wednesday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"thursday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"friday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"saturday\":{\"open\":\"09:00\",\"close\":\"14:00\"},\"sunday\":{\"closed\":true}}")
+  deletedAt         DateTime?                  // Soft delete
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  
+  // Relations
+  creditHolds       CreditHoldHistory[]
+  ledgerEntries     LedgerEntry[]
+  orders            Order[]
+  routingDecisions  OrderRouting[]
+  payments          RetailerPayment[]
+  wholesalerCredits RetailerWholesalerCredit[]
+  vendorOffers      VendorOffer[]
+  products          WholesalerProduct[]
+  ratings           WholesalerRating[]
+  
+  @@index([phoneNumber])
+  @@index([whatsappNumber])
+  @@index([email])
+  @@index([gstNumber])
+  @@index([city])
+  @@index([isActive])
+  @@index([isVerified])
+  @@index([deletedAt])
+  @@map("wholesalers")
+}
+
+// ============================================================================
+// PRODUCT & INVENTORY MODELS
+// ============================================================================
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  description String?
+  isActive Boolean   @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  products Product[]
+  
+  @@index([slug])
+  @@index([isActive])
+  @@map("categories")
+}
+
+model Product {
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  categoryId         String
+  unit               String?
+  fixedPrice         Decimal
+  description        String?
+  imageUrl           String?
+  isActive           Boolean             @default(true)
+  deletedAt          DateTime?           // Soft delete
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  
+  // Relations
+  orderItems         OrderItem[]
+  category           Category            @relation(fields: [categoryId], references: [id])
+  wholesalerProducts WholesalerProduct[]
+  
+  @@index([categoryId])
+  @@index([slug])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("products")
+}
+
+model WholesalerProduct {
+  id               String             @id @default(cuid())
+  wholesalerId     String
+  productId        String
+  priceOffered     Decimal
+  stock            Int                @default(0)
+  reservedStock    Int                @default(0)
+  minOrderQuantity Int                @default(1)
+  leadTime         Int                @default(24)
+  isAvailable      Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  reservations     StockReservation[]
+  product          Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  wholesaler       Wholesaler         @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+
+  @@unique([wholesalerId, productId])
+  @@index([wholesalerId])
+  @@index([productId])
+  @@index([isAvailable])
+  // NOTE: Stock constraint enforced via CHECK in migration (see migration strategy)
+  @@map("wholesaler_products")
+}
+
+// ============================================================================
+// ORDER MODELS
+// ============================================================================
+
+model Order {
+  id                  String             @id @default(cuid())
+  orderNumber         String             @unique // Human-readable order number
+  retailerId          String
+  wholesalerId        String?            // Assigned wholesaler
+  finalWholesalerId   String?            // ENFORCED: One winning wholesaler (via unique constraint)
+  totalAmount         Decimal
+  paymentMode         PaymentMode        @default(COD)
+  status              OrderStatus        @default(CREATED)
+  confirmedAt         DateTime?
+  deliveredAt         DateTime?
+  failedAt            DateTime?
+  failureReason       String?
+  expiresAt           DateTime?
+  deletedAt           DateTime?         // Soft delete
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  
+  // Relations
+  retailer            Retailer           @relation(fields: [retailerId], references: [id])
+  wholesaler          Wholesaler?        @relation(fields: [wholesalerId], references: [id])
+  items               OrderItem[]
+  routing             OrderRouting[]
+  stockReservations   StockReservation[]
+  vendorOffers        VendorOffer[]
+  rating              WholesalerRating?
+  conflictLogs        DecisionConflictLog[]
+  ledgerEntries       LedgerEntry[]
+  
+  // ENFORCED: One winning wholesaler per order (via application logic + unique index)
+  @@unique([id, finalWholesalerId], where: { finalWholesalerId: { not: null } })
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([finalWholesalerId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([deletedAt])
+  @@index([retailerId, status])
+  @@index([wholesalerId, status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  productId    String
+  quantity     Int
+  priceAtOrder Decimal
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product @relation(fields: [productId], references: [id])
+  
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model VendorOffer {
+  id              String      @id @default(uuid())
+  orderId         String
+  wholesalerId    String
+  priceQuote      Decimal
+  deliveryEta     String
+  stockConfirmed  Boolean     @default(false)
+  status          OfferStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  wholesaler      Wholesaler  @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, wholesalerId])
+  @@index([orderId])
+  @@index([wholesalerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orderId, status])
+  @@map("vendor_offers")
+}
+
+model StockReservation {
+  id                  String                 @id @default(cuid())
+  wholesalerProductId String
+  orderId             String
+  quantity            Int
+  status              StockReservationStatus @default(ACTIVE)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime              @updatedAt
+  
+  order               Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  wholesalerProduct   WholesalerProduct     @relation(fields: [wholesalerProductId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([wholesalerProductId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("stock_reservations")
+}
+
+model OrderRouting {
+  id                   String      @id @default(cuid())
+  orderId              String
+  retailerId           String
+  productRequested     String
+  candidateWholesalers String      // JSON array
+  selectedWholesalerId String?
+  routingReason        String
+  routingScore         Float
+  status               String      @default("PENDING")
+  attempt              Int         @default(1)
+  timestamp            DateTime    @default(now())
+  order                Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  retailer             Retailer    @relation(fields: [retailerId], references: [id])
+  selectedWholesaler   Wholesaler? @relation(fields: [selectedWholesalerId], references: [id])
+  
+  @@index([orderId])
+  @@index([retailerId])
+  @@index([selectedWholesalerId])
+  @@index([timestamp])
+  @@map("order_routing")
+}
+
+// ============================================================================
+// CREDIT & LEDGER MODELS
+// ============================================================================
+
+model CreditAccount {
+  id                 String   @id @default(cuid())
+  retailerId         String   @unique
+  creditLimit        Decimal  @default(0)
+  usedCredit         Decimal  @default(0)
+  maxOrderValue      Decimal  @default(50000)
+  maxOutstandingDays Int      @default(30)
+  updatedAt          DateTime @updatedAt
+  retailer           Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  
+  // ENFORCED: Credit limit via application logic + CHECK constraint in migration
+  @@index([retailerId])
+  @@map("credit_accounts")
+}
+
+model RetailerWholesalerCredit {
+  id            String     @id @default(cuid())
+  retailerId    String
+  wholesalerId  String
+  creditLimit   Decimal    @default(0)
+  creditTerms   Int        @default(30)
+  interestRate  Decimal    @default(0)
+  isActive      Boolean    @default(true)
+  blockedReason String?
+  blockedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  retailer      Retailer   @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  wholesaler    Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+
+  @@unique([retailerId, wholesalerId])
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([isActive])
+  @@map("retailer_wholesaler_credits")
+}
+
+model LedgerEntry {
+  id           String             @id @default(uuid())
+  retailerId   String
+  wholesalerId String
+  orderId      String?
+  entryType    LedgerEntryType
+  amount       Decimal
+  balanceAfter Decimal
+  dueDate      DateTime?
+  createdBy    LedgerEntryCreator @default(SYSTEM)
+  createdAt    DateTime           @default(now())
+  // IMMUTABLE: No updatedAt, no delete - append-only ledger
+  
+  order        Order?             @relation(fields: [orderId], references: [id])
+  retailer     Retailer           @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  wholesaler   Wholesaler         @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+  payment      RetailerPayment?
+
+  @@index([retailerId, wholesalerId])
+  @@index([orderId])
+  @@index([entryType])
+  @@index([createdAt])
+  @@index([dueDate])
+  @@index([retailerId, wholesalerId, createdAt])
+  // NOTE: Immutability enforced via application logic (no update/delete operations)
+  @@map("ledger_entries")
+}
+
+model RetailerPayment {
+  id            String       @id @default(cuid())
+  retailerId    String
+  wholesalerId String
+  amount        Decimal
+  paymentMode   PaymentMode
+  chequeNumber  String?
+  chequeDate    DateTime?
+  bankName      String?
+  status        PaymentStatus @default(PENDING)
+  clearedDate   DateTime?
+  ledgerEntryId String?       @unique
+  notes         String?
+  recordedAt    DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  ledgerEntry   LedgerEntry?  @relation(fields: [ledgerEntryId], references: [id])
+  retailer      Retailer      @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  wholesaler    Wholesaler    @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([status])
+  @@index([recordedAt])
+  @@map("retailer_payments")
+}
+
+model CreditHoldHistory {
+  id             String     @id @default(cuid())
+  retailerId     String
+  wholesalerId   String
+  holdReason     String
+  notes          String?
+  isActive       Boolean    @default(true)
+  releasedAt     DateTime?
+  releasedBy     String?
+  releasedReason String?
+  createdAt      DateTime   @default(now())
+  retailer       Retailer   @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  wholesaler     Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("credit_hold_history")
+}
+
+model CreditTransaction {
+  id             String    @id @default(cuid())
+  retailerId     String
+  orderId        String?
+  amount         Decimal
+  type           String
+  dueDate        DateTime?
+  status         String
+  reminderSentAt DateTime?
+  reminderCount  Int       @default(0)
+  clearedAt      DateTime?
+  clearedAmount  Decimal   @default(0)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  retailer       Retailer  @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  
+  @@index([retailerId])
+  @@index([orderId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("credit_transactions")
+}
+
+// ============================================================================
+// ADMIN & AUDIT MODELS
+// ============================================================================
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  action    String
+  targetId  String
+  reason    String
+  metadata  String?  // JSON for additional context
+  createdAt DateTime @default(now())
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetId])
+  @@index([createdAt])
+  @@index([adminId, createdAt])
+  @@map("admin_audit_logs")
+}
+
+model ApiKey {
+  id         String   @id @default(cuid())
+  adminId    String
+  keyHash    String   @unique // SHA-256 hash of the API key
+  scope      String   @default("admin") // admin, read_only, write, webhook
+  isActive   Boolean  @default(true)
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([keyHash])
+  @@index([isActive])
+  @@index([scope])
+  @@index([expiresAt])
+  @@map("api_keys")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  retailerId  String
+  action      String
+  reference   String?
+  oldValue    String?
+  newValue    String?
+  performedBy String
+  reason      String?
+  createdAt   DateTime @default(now())
+  retailer    Retailer @relation(fields: [retailerId], references: [id])
+  
+  @@index([retailerId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// WEBHOOK LOGGING
+// ============================================================================
+
+model WebhookLog {
+  id            String          @id @default(uuid())
+  eventType     WebhookEventType
+  entityId      String          // ID of the entity that triggered the webhook
+  entityType    String          // e.g., "Order", "Offer", "Payment"
+  payload       String          // JSON payload
+  url           String          // Webhook endpoint URL
+  status        WebhookStatus   @default(PENDING)
+  responseCode  Int?
+  responseBody  String?
+  errorMessage  String?
+  retryCount    Int             @default(0)
+  nextRetryAt   DateTime?
+  createdAt     DateTime        @default(now())
+  processedAt   DateTime?
+  
+  @@index([eventType])
+  @@index([entityId, entityType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([nextRetryAt])
+  @@map("webhook_logs")
+}
+
+// ============================================================================
+// RATING & FEEDBACK
+// ============================================================================
+
+model WholesalerRating {
+  id             String     @id @default(cuid())
+  orderId        String     @unique
+  wholesalerId  String
+  retailerId     String
+  overallRating  Int        // 1-5
+  deliveryTime   Int        // 1-5
+  productQuality Int        // 1-5
+  communication  Int        // 1-5
+  comment        String?
+  timestamp      DateTime   @default(now())
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  retailer       Retailer   @relation(fields: [retailerId], references: [id])
+  wholesaler     Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+  
+  @@index([wholesalerId])
+  @@index([retailerId])
+  @@index([timestamp])
+  @@map("wholesaler_ratings")
+}
+
+// ============================================================================
+// DECISION ENGINE & CONFLICT LOGGING
+// ============================================================================
+
+model DecisionConflictLog {
+  id                  String   @id @default(uuid())
+  orderId             String
+  attemptedBy         String?   // Admin ID or system identifier
+  conflictReason      String
+  finalWholesalerId   String?   // The wholesaler that was already assigned
+  attemptedWholesalerId String? // The wholesaler that was being assigned
+  orderStatus         String
+  metadata            String?   // JSON string for additional context
+  createdAt           DateTime  @default(now())
+  order               Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([attemptedBy])
+  @@index([createdAt])
+  @@map("decision_conflict_logs")
+}
+
+// ============================================================================
+// SUPPORT & CONVERSATION MODELS
+// ============================================================================
+
+model Conversation {
+  id               String                @id @default(cuid())
+  retailerId       String
+  assignedToUserId String?
+  assignedAt       DateTime?
+  status           String                @default("OPEN")
+  unreadCount      Int                   @default(0)
+  closedAt         DateTime?
+  resolvedNotes    String?
+  updatedAt        DateTime              @updatedAt
+  createdAt        DateTime              @default(now())
+  assignedToUser   User?                 @relation(fields: [assignedToUserId], references: [id])
+  retailer         Retailer              @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  messages         ConversationMessage[]
+  
+  @@index([retailerId])
+  @@index([assignedToUserId])
+  @@index([status])
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  body           String
+  isFromRetailer Boolean
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+  senderUserId   String?
+  timestamp      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([timestamp])
+  @@map("conversation_messages")
+}
+
+// ============================================================================
+// ADDITIONAL MODELS (for completeness)
+// ============================================================================
+
+model WhatsAppMessage {
+  id        String   @id @default(cuid())
+  from      String
+  to        String
+  body      String
+  direction String
+  createdAt DateTime @default(now())
+  
+  @@index([from])
+  @@index([to])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
+}
+
+model PendingOrder {
+  id               String    @id @default(cuid())
+  retailerId       String
+  cartItems        String    // JSON
+  totalAmount      Decimal
+  status           String    @default("PENDING")
+  expiresAt        DateTime
+  followUpSentAt   DateTime?
+  recoveredOrderId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  @@index([retailerId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("pending_orders")
+}
+
+model RetailerInsight {
+  id               String   @id @default(cuid())
+  retailerId       String   @unique
+  ordersThisWeek   Int      @default(0)
+  ordersLastWeek   Int      @default(0)
+  ordersThisMonth  Int      @default(0)
+  avgOrderValue    Decimal  @default(0)
+  totalSpent       Decimal  @default(0)
+  daysActive       Int      @default(0)
+  lastCalculatedAt DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@index([retailerId])
+  @@map("retailer_insights")
+}

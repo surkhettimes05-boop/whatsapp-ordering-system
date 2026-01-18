@@ -1,0 +1,599 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ADMIN USERS (Web Dashboard)
+model User {
+  id            String    @id @default(cuid())
+  phoneNumber   String    @unique
+  name          String
+  email         String?   @unique
+  passwordHash  String?
+  role          String    @default("ADMIN") // ADMIN, STAFF, SUPPORT
+  
+  // Shared inbox assignments
+  conversations Conversation[]
+  
+  createdAt     DateTime  @default(now())
+}
+
+// WHATSAPP RETAILERS (Customers)
+model Retailer {
+  id          String   @id @default(cuid())
+  pasalName   String?
+  ownerName   String?
+  phoneNumber String   @unique // WhatsApp ID (e.g. "9779812345678")
+  status      String   @default("ACTIVE") // ACTIVE, BLOCKED
+  
+  // Geographic location for routing
+  city        String?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  
+  conversationState String? // Stores simple state: IDLE, ORDER_IN_PROGRESS, etc.
+  
+  // Credit controls
+  creditStatus  String   @default("ACTIVE") // ACTIVE, PAUSED, BLOCKED
+  creditPausedAt DateTime? // When credit was paused
+  creditPauseReason String? // Why credit was paused
+  
+  orders      Order[]
+  credit      CreditAccount?
+  creditTransactions CreditTransaction[]
+  ledgerEntries CreditLedgerEntry[] // New: append-only ledger
+  wholesalerCredits RetailerWholesalerCredit[] // New: per-wholesaler limits
+  payments    RetailerPayment[] // New: payment records
+  creditHolds CreditHoldHistory[] // New: audit trail of holds
+  routingHistory OrderRouting[]
+  ratings     WholesalerRating[]
+  auditLogs   AuditLog[]
+  conversations Conversation[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// MULTI-VENDOR SYSTEM MODELS
+// ============================================
+
+// WHOLESALER / VENDOR MODEL
+model Wholesaler {
+  id              String   @id @default(cuid())
+  
+  // Business Information
+  businessName    String
+  ownerName       String
+  phoneNumber     String   @unique
+  whatsappNumber  String   @unique
+  email           String?  @unique
+  gstNumber       String?  @unique
+  
+  // Location Information (for distance-based routing)
+  businessAddress String
+  city            String
+  state           String
+  pincode         String
+  latitude        Float    // For distance calculation
+  longitude       Float    // For distance calculation
+  
+  // Performance Metrics (for intelligent routing)
+  reliabilityScore  Float   @default(50) // 0-100, based on performance
+  totalOrders       Int     @default(0)
+  completedOrders   Int     @default(0)
+  cancelledOrders   Int     @default(0)
+  averageRating     Float   @default(0)  // 0-5 stars
+  totalRevenue      Decimal @default(0)
+  
+  // Status & Verification
+  isActive        Boolean  @default(true)
+  isVerified      Boolean  @default(false)
+  
+  // Capacity Management
+  capacity        Int      @default(10)  // Max concurrent orders
+  currentOrders   Int      @default(0)   // Active orders currently handling
+  
+  // Business Configuration
+  categories      String   // JSON array: ["Electronics", "Groceries"]
+  deliveryRadius  Float    @default(50)  // In kilometers
+  minimumOrder    Decimal  @default(0)   // Minimum order value
+  deliveryCharges Decimal  @default(0)
+  
+  // Operating Hours (JSON format)
+  operatingHours  String   @default("{\"monday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"tuesday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"wednesday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"thursday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"friday\":{\"open\":\"09:00\",\"close\":\"18:00\"},\"saturday\":{\"open\":\"09:00\",\"close\":\"14:00\"},\"sunday\":{\"closed\":true}}")
+  
+  // Relationships
+  products        WholesalerProduct[]
+  orders          Order[]
+  routingDecisions OrderRouting[]
+  ratings         WholesalerRating[]
+  wholesalerCredits RetailerWholesalerCredit[] // New: credit limits per retailer
+  ledgerEntries   CreditLedgerEntry[] // New: ledger entries
+  payments        RetailerPayment[] // New: payment records
+  creditHolds     CreditHoldHistory[] // New: hold history
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// WHOLESALER PRODUCT INVENTORY
+// Links products to wholesalers with specific pricing and availability
+model WholesalerProduct {
+  id              String     @id @default(cuid())
+  
+  wholesaler      Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+  wholesalerId    String
+  
+  product         Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId       String
+  
+  // Pricing & Availability
+  priceOffered    Decimal    // Wholesaler's price for this product
+  stock           Int        @default(0)
+  minOrderQuantity Int       @default(1)
+  
+  // Fulfillment Information
+  leadTime        Int        @default(24) // Hours to fulfill order
+  isAvailable     Boolean    @default(true)
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  // Ensure one product per wholesaler only once
+  @@unique([wholesalerId, productId])
+}
+
+// ORDER ROUTING TRACKING
+// Tracks how orders are routed to wholesalers
+model OrderRouting {
+  id                      String   @id @default(cuid())
+  
+  order                   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId                 String
+  
+  retailer                Retailer @relation(fields: [retailerId], references: [id])
+  retailerId              String
+  
+  // Routing Decision Data
+  productRequested        String   // JSON array of product IDs
+  candidateWholesalers    String   // JSON array of wholesaler IDs considered
+  
+  selectedWholesaler      Wholesaler? @relation(fields: [selectedWholesalerId], references: [id])
+  selectedWholesalerId    String?
+  
+  routingReason           String   // Explanation of why this wholesaler was chosen
+  routingScore            Float    // Calculated score (0-100)
+  
+  // Routing Status
+  status                  String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, REROUTED
+  attempt                 Int      @default(1) // How many times we tried to route this order
+  
+  timestamp               DateTime @default(now())
+}
+
+// WHOLESALER RATING & FEEDBACK
+// Tracks customer ratings for wholesalers
+model WholesalerRating {
+  id              String     @id @default(cuid())
+  
+  order           Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId         String
+  
+  wholesaler      Wholesaler @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+  wholesalerId    String
+  
+  retailer        Retailer   @relation(fields: [retailerId], references: [id])
+  retailerId      String
+  
+  // Rating Components (1-5 scale)
+  overallRating   Int        // Overall rating (1-5 stars)
+  deliveryTime    Int        // Rating for delivery speed
+  productQuality  Int        // Rating for product quality
+  communication   Int        // Rating for communication
+  
+  // Feedback
+  comment         String?
+  
+  timestamp       DateTime   @default(now())
+  
+  // One rating per order
+  @@unique([orderId])
+}
+
+// ============================================
+// EXISTING MODELS (UPDATED)
+// ============================================
+
+// CATALOG
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  products    Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  
+  unit        String?   // e.g. "kg", "pcs", "carton"
+  fixedPrice  Decimal   // Base/reference price
+  isActive    Boolean  @default(true)
+  
+  orderItems  OrderItem[]
+  wholesalerProducts WholesalerProduct[] // Link to wholesaler inventory
+}
+
+// ORDERS (Updated with wholesaler assignment)
+model Order {
+  id            String      @id @default(cuid())
+  retailer      Retailer    @relation(fields: [retailerId], references: [id])
+  retailerId    String
+  
+  // Wholesaler Assignment (NEW)
+  wholesaler    Wholesaler? @relation(fields: [wholesalerId], references: [id])
+  wholesalerId  String?
+  
+  totalAmount   Decimal
+  paymentMode   String      // COD, CREDIT
+  status        String      // PLACED, CONFIRMED, IN_PROGRESS, DELIVERED, CANCELLED, PAID, FAILED
+  
+  items         OrderItem[]
+  routing       OrderRouting[] // Routing history for this order
+  rating        WholesalerRating? // Customer rating after completion
+  
+  // Timestamps
+  confirmedAt   DateTime?   // When wholesaler accepted
+  deliveredAt   DateTime?   // When order was delivered
+  failedAt      DateTime?   // When order failed (WhatsApp delivery, etc)
+  failureReason String?     // Why the order failed
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  
+  quantity     Int
+  priceAtOrder Decimal
+}
+
+// ============================================
+// CREDIT & LEDGER SYSTEM
+// ============================================
+// Business Rules:
+// 1. Each retailer has per-wholesaler credit limits
+// 2. Credit balance = SUM(ledger entries) - never stored directly
+// 3. Ledger is append-only (immutable records)
+// 4. Order blocks automatically if balance would exceed limit
+// 5. Ledger entries created on: order delivery (debit), payment (credit)
+
+// PER-WHOLESALER CREDIT LIMIT
+// Each retailer negotiates different credit terms with each wholesaler
+model RetailerWholesalerCredit {
+  id                    String     @id @default(cuid())
+  
+  retailer              Retailer   @relation("retailerCredits", fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId            String
+  
+  wholesaler            Wholesaler @relation("wholesalerCredits", fields: [wholesalerId], references: [id], onDelete: Cascade)
+  wholesalerId          String
+  
+  // Credit Configuration
+  creditLimit           Decimal    @default(0)     // Max allowed outstanding balance (e.g., 50000)
+  creditTerms           Int        @default(30)    // Payment terms in days
+  interestRate          Decimal    @default(0)     // Annual interest % if payment overdue (optional)
+  
+  // Status
+  isActive              Boolean    @default(true)
+  blockedReason         String?    // Why credit is blocked (if isActive = false)
+  blockedAt             DateTime?
+  
+  // Metadata
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  
+  // Ensure one credit setup per retailer-wholesaler pair
+  @@unique([retailerId, wholesalerId])
+  @@index([retailerId])
+  @@index([wholesalerId])
+}
+
+// LEDGER ENTRY (Append-Only, Immutable)
+// Every transaction affecting credit goes here
+// Never edit or delete - only create new entries
+model CreditLedgerEntry {
+  id                    String     @id @default(cuid())
+  
+  retailer              Retailer   @relation("ledgerEntries", fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId            String
+  
+  wholesaler            Wholesaler @relation("ledgerEntries", fields: [wholesalerId], references: [id], onDelete: Cascade)
+  wholesalerId          String
+  
+  // Ledger Details
+  entryType             String     // DEBIT (order placed), CREDIT (payment received), ADJUSTMENT
+  amount                Decimal    // Unsigned - sign determined by entryType
+  
+  // Related Transaction
+  orderId               String?    // If from order delivery
+  paymentId             String?    // If from payment
+  
+  // Due Date (for DEBIT entries only)
+  dueDate               DateTime?  // When payment is due (order date + credit terms)
+  
+  // Metadata (immutable after creation)
+  description           String?    // Business context (e.g., "Order #123 delivered")
+  approvalNotes         String?    // Why adjustment was made (admin input)
+  approvedBy            String?    // Admin user ID who created entry
+  
+  // Timestamps (immutable)
+  createdAt             DateTime   @default(now())
+  
+  // Indexes for querying
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([createdAt])
+}
+
+// PAYMENT RECORD (tracks cash/cheque received)
+model RetailerPayment {
+  id                    String     @id @default(cuid())
+  
+  retailer              Retailer   @relation("payments", fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId            String
+  
+  wholesaler            Wholesaler @relation("payments", fields: [wholesalerId], references: [id], onDelete: Cascade)
+  wholesalerId          String
+  
+  // Payment Details
+  amount                Decimal
+  paymentMode           String     // CASH, CHEQUE, BANK_TRANSFER, UPI
+  
+  // Cheque Details (if applicable)
+  chequeNumber          String?
+  chequeDate            DateTime?
+  bankName              String?
+  
+  // Payment Status
+  status                String     @default("PENDING")  // PENDING, CLEARED, BOUNCED, CANCELLED
+  clearedDate           DateTime?  // When payment was actually received/cleared
+  
+  // Ledger Reference
+  ledgerEntry           CreditLedgerEntry? // Link to the credit ledger entry created from this payment
+  ledgerEntryId         String?
+  
+  // Notes
+  notes                 String?
+  
+  // Timestamps
+  recordedAt            DateTime   @default(now())
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([status])
+}
+
+// CREDIT HOLD/BLOCK HISTORY (audit trail)
+model CreditHoldHistory {
+  id                    String     @id @default(cuid())
+  
+  retailer              Retailer   @relation("creditHolds", fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId            String
+  
+  wholesaler            Wholesaler @relation("creditHolds", fields: [wholesalerId], references: [id], onDelete: Cascade)
+  wholesalerId          String
+  
+  // Hold Details
+  holdReason            String     // LIMIT_EXCEEDED, OVERDUE_PAYMENT, ADMIN_ACTION, OTHER
+  notes                 String?
+  
+  // Status
+  isActive              Boolean    @default(true)
+  releasedAt            DateTime?
+  releasedBy            String?    // Admin user ID
+  releasedReason        String?
+  
+  // Timestamps
+  createdAt             DateTime   @default(now())
+  
+  @@index([retailerId])
+  @@index([isActive])
+}
+
+// Old model - deprecated but keeping for backward compatibility
+model CreditAccount {
+  id              String   @id @default(cuid())
+  retailer        Retailer @relation("creditAccount", fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId      String   @unique
+  
+  creditLimit     Decimal
+  usedCredit      Decimal  @default(0)
+  
+  maxOrderValue   Decimal  @default(50000)
+  maxOutstandingDays Int  @default(30)
+  
+  updatedAt       DateTime @updatedAt
+}
+
+// Old model - deprecated but keeping for backward compatibility
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  retailer    Retailer @relation("creditTransactions", fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId  String
+  
+  orderId     String? 
+  amount      Decimal
+  type        String
+  dueDate     DateTime?
+  status      String
+  
+  reminderSentAt DateTime?
+  reminderCount Int @default(0)
+  
+  clearedAt   DateTime?
+  clearedAmount Decimal @default(0)
+  
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+}
+
+// OPERATIONAL AUDIT LOG
+model AuditLog {
+  id          String   @id @default(cuid())
+  retailer    Retailer @relation(fields: [retailerId], references: [id])
+  retailerId  String
+  
+  action      String   // CREDIT_ADDED, CREDIT_CLEARED, PAUSE_CREDIT, UNPAUSE_CREDIT, ADJUSTMENT, ORDER_CREATED, ORDER_FAILED
+  reference   String?  // Linked transaction/order ID
+  
+  // What changed
+  oldValue    String?  // JSON serialized previous value
+  newValue    String?  // JSON serialized new value
+  
+  // Who did it
+  performedBy String   // SYSTEM or admin user ID
+  
+  reason      String?  // Why this action was taken
+  
+  createdAt   DateTime @default(now())
+}
+
+// LOGGING
+model WhatsAppMessage {
+  id        String   @id @default(cuid())
+  from      String
+  to        String
+  body      String
+  direction String   // INCOMING, OUTGOING
+  createdAt DateTime @default(now())
+}
+
+// ORDER FAILURE & RECOVERY TRACKING
+model PendingOrder {
+  id          String   @id @default(cuid())
+  retailerId  String
+  
+  // Cart state before order was placed
+  cartItems   String   // JSON serialized cart items
+  totalAmount Decimal
+  
+  // Tracking
+  status      String   @default("PENDING") // PENDING, EXPIRED, RECOVERED, FAILED
+  expiresAt   DateTime // When this pending order expires
+  
+  // Recovery tracking
+  followUpSentAt DateTime? // When follow-up message was sent
+  recoveredOrderId String? // If user re-submitted, link to new order
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// RETAILER INSIGHTS (CACHE for performance)
+model RetailerInsight {
+  id              String   @id @default(cuid())
+  retailerId      String   @unique
+  
+  // Weekly stats
+  ordersThisWeek  Int      @default(0)
+  ordersLastWeek  Int      @default(0)
+  
+  // Monthly stats
+  ordersThisMonth Int      @default(0)
+  avgOrderValue   Decimal  @default(0) // Last 30 days
+  totalSpent      Decimal  @default(0) // Last 30 days
+  
+  // Engagement
+  daysActive      Int      @default(0) // Days ordered in last 30 days
+  
+  // Cache validity
+  lastCalculatedAt DateTime @default(now())
+  
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================
+// SHARED INBOX SYSTEM MODELS
+// ============================================
+
+// CONVERSATION THREAD - Represents a chat thread with a retailer
+model Conversation {
+  id                  String   @id @default(cuid())
+  
+  retailer            Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  retailerId          String
+  
+  // Team assignment
+  assignedToUser      User?    @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  assignedToUserId    String?
+  assignedAt          DateTime?
+  
+  // Conversation metadata
+  messages            ConversationMessage[]
+  
+  status              String   @default("OPEN") // OPEN, CLOSED, PENDING
+  unreadCount         Int      @default(0)
+  
+  // Resolution tracking
+  closedAt            DateTime?
+  resolvedNotes       String?
+  
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+}
+
+// CONVERSATION MESSAGE - Individual messages in a thread
+model ConversationMessage {
+  id                  String   @id @default(cuid())
+  
+  conversation        Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId      String
+  
+  // Message content
+  body                String
+  isFromRetailer      Boolean  // true = from retailer, false = from admin
+  
+  // Status tracking
+  isRead              Boolean  @default(false)
+  readAt              DateTime?
+  
+  // Metadata
+  senderUserId        String?  // Admin who sent the message (if from admin)
+  timestamp           DateTime @default(now())
+}
+
+// ADMIN ACTION LOG - Audit trail for admin actions
+model AdminActionLog {
+  id                  String   @id @default(cuid())
+  
+  action              String   // CONVERSATION_ASSIGNED, PRODUCT_CREATED, etc.
+  performedBy         String?  // User ID
+  reference           String?  // Context: "conversation:123", "product:456"
+  details             String?  // Additional details
+  
+  timestamp           DateTime @default(now())
+  
+  @@index([timestamp])
+  @@index([performedBy])
+}
+
+// Update User model to include conversations
+// (Already has conversations relation above)

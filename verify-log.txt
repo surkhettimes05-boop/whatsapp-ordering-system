@@ -1,0 +1,114 @@
+???? Twilio Service Initialized:
+   SID: EXISTS
+   FROM: whatsapp:+14155238886
+   NUM: 14155238886
+???? Starting Phase 2 Verification...
+node : PrismaClientVa
+lidationError: 
+At line:1 char:1
++ node 
+verify-phase2.js 
+2>&1 | Out-File 
+-FilePath 
+verify-log.txt 
+-Encod ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (PrismaC   
+ lientValidationE    
+rror: :String) [    
+], RemoteExcepti    
+on
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+Invalid `prisma.produ
+ct.upsert()` 
+invocation in
+C:\Users\QCS\Desktop\
+whatsapp-ordering-sys
+tem\backend\verify-ph
+ase2.js:16:42
+
+  13 
+console.log('???? 
+Starting Phase 2 
+Verification...');
+  14 
+  15 // 1. Setup - 
+Ensure we have a 
+product "Rice"
+??? 16 const product 
+= await prisma.produc
+t.upsert({
+       where: {
+         id: 
+"test-rice"
+       },
+       update: {
+         isActive: 
+true
+       },
+       create: {
+         id: 
+"test-rice",
+         name: 
+"Rice",
+         basePrice: 
+50,
+         stock: 100,
+         category: 
+"Grains",
+         sku: 
+"RICE-001",
+     +   images: 
+String
+       }
+     })
+
+Argument `images` is 
+missing.
+    at wn (C:\Users\Q
+CS\Desktop\whatsapp-o
+rdering-system\backen
+d\node_modules\@prism
+a\client\runtime\libr
+ary.js:29:1363)
+    at $n.handleReque
+stError (C:\Users\QCS
+\Desktop\whatsapp-ord
+ering-system\backend\
+node_modules\@prisma\
+client\runtime\librar
+y.js:121:6958)
+    at $n.handleAndLo
+gRequestError (C:\Use
+rs\QCS\Desktop\whatsa
+pp-ordering-system\ba
+ckend\node_modules\@p
+risma\client\runtime\
+library.js:121:6623)
+    at $n.request (C:
+\Users\QCS\Desktop\wh
+atsapp-ordering-syste
+m\backend\node_module
+s\@prisma\client\runt
+ime\library.js:121:63
+07)
+    at async l (C:\Us
+ers\QCS\Desktop\whats
+app-ordering-system\b
+ackend\node_modules\@
+prisma\client\runtime
+\library.js:130:9633)
+    at async verify (
+C:\Users\QCS\Desktop\
+whatsapp-ordering-sys
+tem\backend\verify-ph
+ase2.js:16:21) {
+  clientVersion: 
+'5.22.0'
+}

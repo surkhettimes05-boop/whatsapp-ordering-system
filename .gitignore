@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Environment variables (SECRETS!)
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build files
+dist/
+build/
+
+# Database
+*.sqlite
+*.db
+
+# Test files
+coverage/
+.nyc_output/
+
+# Output files (prevent secrets leaks)
+diagnostic_output.txt
+diagnostic_output_utf8.txt
+test_output.txt
+test-results.txt
+test-vendor-output.txt
+verify-log.txt
+*.txt
