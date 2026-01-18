@@ -25,33 +25,14 @@ services:
       - key: TZ
         value: Asia/Kathmandu
 
-  # 2. Worker Service (BullMQ)
-  # NOTE: Render Free tier doesn't support separate worker services well (they sleep).
-  # For MVP/Low cost, we run the worker INSIDE the web service (via app.js scheduler).
-  # A separate worker service is better for scale.
-  # - type: worker
-  #   name: whatsapp-ordering-worker
-  #   env: node
-  #   buildCommand: npm install && npx prisma generate
-  #   startCommand: node src/queue/worker.js
-  #   rootDir: backend
-  #   envVars: ...
+  # 3. Redis Service
+  - type: redis
+    name: whatsapp-redis
+    plan: free # 25MB RAM, ephemeral
+    ipAllowList: [] # Allow internal access only
 
 databases:
   - name: whatsapp-db
     databaseName: whatsapp
     user: whatsapp_user
     plan: free # Postgree 15, 1GB storage
-
-# Redis (Render Managed Redis)
-# Note: Render Redis is not free after trial. 
-# Alternative: Use Internal Redis or external provider if trying to stay 100% free.
-# But for production, Managed is best.
-# If unavailable in free tier via YAML, user creates manually.
-# We will define it here expecting user might need to upgrade or just use it.
-# If this fails validation on free tier, remove it and ask user to provide REDIS_URL from elsewhere.
-# Render doesn't support Redis in blueprint for free tier usually? Let's check docs mentally.
-# Actually, Render has a free Redis tier now!
-  - name: whatsapp-redis
-    plan: free # 25MB RAM, ephemeral
-    ipAllowList: [] # Allow internal access only
