@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-import prisma from '../config/prismaClient.js';
+const prisma = require('../config/database');
 const geolib = require('geolib');
 const _ = require('lodash');
 

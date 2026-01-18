@@ -14,19 +14,23 @@ try {
     IORedis = require('ioredis');
 
     // Redis connection configuration
-    const redisConfig = process.env.REDIS_URL || {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: process.env.REDIS_PORT || 6379,
-        password: process.env.REDIS_PASSWORD || undefined,
+    // Redis connection configuration
+    const redisOptions = {
         maxRetriesPerRequest: null,
         enableReadyCheck: false,
-        retryStrategy: (times) => {
-            const delay = Math.min(times * 50, 2000);
-            return delay;
-        }
+        retryStrategy: (times) => Math.min(times * 50, 2000)
     };
 
-    connection = new IORedis(redisConfig);
+    if (process.env.REDIS_URL) {
+        connection = new IORedis(process.env.REDIS_URL, redisOptions);
+    } else {
+        connection = new IORedis({
+            host: process.env.REDIS_HOST || 'localhost',
+            port: process.env.REDIS_PORT || 6379,
+            password: process.env.REDIS_PASSWORD || undefined,
+            ...redisOptions
+        });
+    }
 
     // Prevent unhandled error events from crashing the process
     connection.on('error', (err) => {
