@@ -35,4 +35,9 @@ router.get('/analytics/dashboard', adminController.getAnalyticsDashboard);
 const adminOverrideController = require('../controllers/adminOverride.controller');
 router.use('/overrides', adminOverrideController);
 
+// Recovery system endpoints
+router.get('/recovery/report', adminController.getRecoveryReport);
+router.get('/recovery/history', adminController.getRecoveryHistory);
+router.post('/recovery/run', adminController.runRecoveryWorker);
+
 module.exports = router;

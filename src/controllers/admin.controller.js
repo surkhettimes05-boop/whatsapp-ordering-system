@@ -314,6 +314,87 @@ class AdminController {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  /**
+   * Get latest recovery report
+   * GET /api/v1/admin/recovery/report
+   */
+  async getRecoveryReport(req, res) {
+    try {
+      // Get latest recovery report from audit log
+      const latestReport = await prisma.auditLog.findFirst({
+        where: { action: 'RECOVERY_REPORT' },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (!latestReport) {
+        return res.json({
+          success: true,
+          message: 'No recovery reports found',
+          data: null
+        });
+      }
+
+      const report = JSON.parse(latestReport.metadata);
+
+      res.json({
+        success: true,
+        data: {
+          lastRun: latestReport.createdAt,
+          ...report
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Get recovery history (last N reports)
+   * GET /api/v1/admin/recovery/history?limit=10
+   */
+  async getRecoveryHistory(req, res) {
+    try {
+      const limit = parseInt(req.query.limit) || 10;
+
+      const reports = await prisma.auditLog.findMany({
+        where: { action: 'RECOVERY_REPORT' },
+        orderBy: { createdAt: 'desc' },
+        take: limit
+      });
+
+      const history = reports.map(log => ({
+        timestamp: log.createdAt,
+        ...JSON.parse(log.metadata)
+      }));
+
+      res.json({
+        success: true,
+        data: { history, total: history.length }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Manually trigger recovery worker
+   * POST /api/v1/admin/recovery/run
+   */
+  async runRecoveryWorker(req, res) {
+    try {
+      const recoveryWorker = require('../workers/recovery.worker');
+      const report = await recoveryWorker.run();
+
+      res.json({
+        success: true,
+        message: 'Recovery worker completed',
+        data: report
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }
 
 module.exports = new AdminController();

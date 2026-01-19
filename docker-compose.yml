@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: karnali-postgres
+    environment:
+      POSTGRES_USER: karnali
+      POSTGRES_PASSWORD: karnali_dev_password
+      POSTGRES_DB: karnali_trade
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U karnali"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - karnali-network
+
+  # Redis for BullMQ
+  redis:
+    image: redis:7-alpine
+    container_name: karnali-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - karnali-network
+
+  # Backend Application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: karnali-backend
+    environment:
+      NODE_ENV: staging
+      DATABASE_URL: postgresql://karnali:karnali_dev_password@postgres:5432/karnali_trade
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+      JWT_SECRET: staging_jwt_secret_change_in_production
+      # Twilio (mock in staging)
+      TWILIO_ACCOUNT_SID: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      TWILIO_AUTH_TOKEN: mock_auth_token_for_staging
+      TWILIO_PHONE_NUMBER: +1234567890
+      TWILIO_WHATSAPP_NUMBER: whatsapp:+1234567890
+      # OpenAI (optional)
+      OPENAI_API_KEY: sk-mock-key-for-staging
+      # Disable signature verification in staging
+      FORCE_TWILIO_VERIFY: false
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run dev
+    networks:
+      - karnali-network
+
+  # Fake Twilio Mock Server (for local testing)
+  twilio-mock:
+    image: node:18-alpine
+    container_name: karnali-twilio-mock
+    working_dir: /app
+    volumes:
+      - ./scripts/twilio-mock:/app
+    ports:
+      - "3001:3001"
+    command: sh -c "npm install express body-parser && node server.js"
+    networks:
+      - karnali-network
+
+  # Adminer (Database UI)
+  adminer:
+    image: adminer:latest
+    container_name: karnali-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - karnali-network
+
+  # Redis Commander (Redis UI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: karnali-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - karnali-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  karnali-network:
+    driver: bridge

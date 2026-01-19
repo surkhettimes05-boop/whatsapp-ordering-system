@@ -1,3 +1,4 @@
+
 // ============================================================================
 // PRODUCTION-GRADE PRISMA SCHEMA
 // Nepal-Scale B2B Trade Platform
@@ -364,7 +365,13 @@ model Order {
 	retailerId          String
 	wholesalerId        String?            // Assigned wholesaler
 	finalWholesalerId   String?            // ENFORCED: One winning wholesaler (via unique constraint)
+	
+	// Financials (Nepal Tax Compliant)
+	subtotal            Decimal            @default(0)
+	taxRate             Decimal            @default(13.0) // 13% VAT
+	taxAmount           Decimal            @default(0)
 	totalAmount         Decimal
+	
 	paymentMode         PaymentMode        @default(COD)
 	status              OrderStatus        @default(CREATED)
 	confirmedAt         DateTime?
@@ -389,6 +396,7 @@ model Order {
 	conflictLogs        DecisionConflictLog[]
 	ledgerEntries       LedgerEntry[]
 	orderImages         OrderImage[]
+	creditTransactions  CreditTransaction[]
   
 
 	@@index([retailerId])
@@ -401,6 +409,9 @@ model Order {
 	@@index([deletedAt])
 	@@index([retailerId, status])
 	@@index([wholesalerId, status])
+	@@index([status, createdAt])
+	@@index([status, deletedAt])
+	@@index([wholesalerId, finalWholesalerId, status])
 	@@map("orders")
 }
 
@@ -548,7 +559,7 @@ model LedgerEntry {
 	createdAt    DateTime           @default(now())
 	// IMMUTABLE: No updatedAt, no delete - append-only ledger
   
-	order        Order?             @relation(fields: [orderId], references: [id])
+	order        Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
 	retailer     Retailer           @relation(fields: [retailerId], references: [id], onDelete: Cascade)
 	wholesaler   Wholesaler         @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
 	payment      RetailerPayment?
@@ -626,6 +637,7 @@ model CreditTransaction {
 	notes          String?
 	createdAt      DateTime  @default(now())
 	retailer       Retailer  @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+	order          Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
   
 	@@index([retailerId])
 	@@index([orderId])
@@ -864,3 +876,34 @@ model RetailerInsight {
 	@@map("retailer_insights")
 }
 
+// ============================================================================
+// MESSAGE DEDUPLICATION - Prevent duplicate order processing
+// ============================================================================
+
+model ProcessedMessage {
+	id              String    @id @default(cuid())
+	messageSid      String    @unique // Twilio Message SID
+	phoneNumber     String    // Sender's phone number
+	status          String    @default("pending") // pending, processing, success, failed, skipped, retrying
+	messageType     String    @default("text") // text, image, order, etc.
+	orderId         String?   // Order created from this message (if any)
+	retailerId      String?   // Retailer who sent message
+	wholesalerId    String?   // Wholesaler who sent message
+	retryCount      Int       @default(0) // Number of retry attempts
+	metadata        String?   // JSON: Additional data about message
+	result          String?   // JSON: Processing result
+	errorMessage    String?   // Error details if failed
+	processedAt     DateTime  @default(now()) // When message was first received
+	lastRetryAt     DateTime? // When message was last retried
+	createdAt       DateTime  @default(now())
+	updatedAt       DateTime  @updatedAt
+
+	// Indexes for common queries
+	@@index([messageSid])
+	@@index([phoneNumber])
+	@@index([status])
+	@@index([orderId])
+	@@index([processedAt])
+	@@index([createdAt])
+	@@map("processed_messages")
+}

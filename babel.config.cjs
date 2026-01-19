@@ -6,7 +6,7 @@ module.exports = {
         targets: {
           node: 'current'
         },
-        modules: 'auto'
+        modules: false  // Keep CommonJS, don't transform to ESM or vice versa
       }
     ]
   ]

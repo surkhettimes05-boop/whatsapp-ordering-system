@@ -10,6 +10,8 @@ const vendorOfferService = require('../services/vendorOffer.service');
 const messageParser = require('../services/messageParser.service');
 const visionService = require('../services/vision.service');
 const fs = require('fs');
+const dedupService = require('../services/message-dedup.service');
+const { checkDuplicate, markSuccess, markFailed, markSkipped } = require('../middleware/message-dedup.middleware');
 
 class WhatsAppController {
 
@@ -21,12 +23,24 @@ class WhatsAppController {
       const logger = require('../utils/logger');
       const correlationId = req.correlationId || `webhook-${Date.now()}`;
 
+      // Check if this is a duplicate message
+      if (checkDuplicate(req)) {
+        logger.warn('Duplicate message skipped', {
+          messageSid: MessageSid,
+          from: From,
+          correlationId
+        });
+        await markSkipped(req, 'Duplicate message - already processed');
+        return; // Don't process duplicate
+      }
+
       // Log incoming message
       logger.info('Incoming WhatsApp message', {
         from: From,
         to: To,
         messageSid: MessageSid,
         bodyLength: Body?.length || 0,
+        isDuplicate: false,
         correlationId
       });
 
@@ -43,6 +57,7 @@ class WhatsAppController {
       // Validate required fields (if no media, we need body)
       if (numMedia === 0 && !Body) {
         logger.warn('Invalid webhook payload - no media and no body', { from: From });
+        await markFailed(req, null, 'Invalid payload - no media and no body');
         return;
       }
 

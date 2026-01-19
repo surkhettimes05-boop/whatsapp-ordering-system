@@ -248,10 +248,18 @@ This ensures your delivery is recorded correctly.`;
       // Now create order and items atomically with transaction framework
       return await withTransaction(async (tx) => {
         // Create order in same transaction
+        const subtotal = total;
+        const taxRate = 13.0; // 13%
+        const taxAmount = (subtotal * taxRate) / 100;
+        const totalAmount = subtotal + taxAmount;
+
         const order = await tx.order.create({
           data: {
             retailerId,
-            totalAmount: total,
+            subtotal: subtotal,
+            taxRate: taxRate,
+            taxAmount: taxAmount,
+            totalAmount: totalAmount,
             paymentMode: 'COD',
             status: 'PLACED'
           }

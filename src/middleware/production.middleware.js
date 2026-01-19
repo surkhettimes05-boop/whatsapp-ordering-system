@@ -76,10 +76,11 @@ const verifyTwilioSignature = (req, res, next) => {
     if (isValid) {
         next();
     } else {
-        console.warn(`⚠️ Invalid Twilio signature (Bypassed for debugging). URL: ${url}`);
-        // For debugging "No Reply" issues, we allow it to proceed but log the warning
-        // res.status(403).json({ success: false, error: 'Invalid Twilio signature' });
-        next();
+        console.error(`❌ Invalid Twilio signature. URL: ${url}, Signature: ${twilioSignature}`);
+        return res.status(403).json({
+            success: false,
+            error: 'Invalid Twilio signature'
+        });
     }
 };
 

@@ -8,6 +8,7 @@ require('dotenv').config();
 const { requestLogger, logger } = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler.middleware');
 const { securityHeaders, compress, apiLimiter, whatsappLimiter, httpLogger } = require('./middleware/production.middleware');
+const { enforceHttps, httpsSecurityHeaders } = require('./middleware/https-enforcer.middleware');
 
 const app = express();
 
@@ -31,6 +32,10 @@ app.use(compress);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(httpLogger);
+
+// HTTPS Security: Enforce HTTPS in production + set security headers
+app.use(enforceHttps);
+app.use(httpsSecurityHeaders);
 
 // Observability: Tracing middleware (BEFORE other middleware)
 app.use(tracingMiddleware);
@@ -60,6 +65,8 @@ app.get('/health', healthController.getHealth);
 app.get('/health/detailed', healthController.getDetailedHealth);
 app.get('/health/ready', healthController.getReadiness);
 app.get('/health/live', healthController.getLiveness);
+app.get('/health/status', healthController.getHealthStatus);
+app.get('/health/monitor', healthController.getMonitoringStatus);
 
 // --- API ROUTES ---
 
@@ -85,6 +92,7 @@ try {
   app.use('/api/v1/support', require('./routes/support.routes'));
   app.use('/api/v1/admin', apiLimiter, require('./routes/admin.routes'));
   app.use('/api/v1/admin-dashboard', require('./routes/adminDashboard.routes'));
+  app.use('/api/v1/admin/retailer-dashboard', require('./routes/admin-retailer-dashboard.routes'));
   app.use('/api/v1/wholesalers', require('./routes/wholesaler.routes'));
   app.use('/api/v1/vendor-offers', require('./routes/vendorOffer.routes'));
   app.use('/api/v1/credit', require('./routes/credit.routes'));
