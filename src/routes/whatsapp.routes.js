@@ -79,6 +79,13 @@ router.get('/webhook', httpsOnly, webhookRateLimiter, (req, res) => {
  * IMPORTANT: Always return 200 OK immediately to Twilio
  * Process message asynchronously to prevent timeouts
  */
+const validate = require('../middleware/validation.middleware');
+const { whatsappWebhookSchema } = require('../validators/schemas');
+
+// ...
+
+// IMPORTANT: Always return 200 OK immediately to Twilio
+// Process message asynchronously to prevent timeouts
 const webhookUrl = process.env.WEBHOOK_URL || undefined; // Must be set in production
 router.post(
   '/webhook',
@@ -86,6 +93,8 @@ router.post(
   webhookRateLimiter,
   replayProtectionMiddleware(),
   validateTwilioWebhook(webhookUrl),
+  // validate(whatsappWebhookSchema, 'body'), // FIXME: Twilio signature validates integrity. Strict strict schema might block valid Twilio updates if fields change.
+  // We'll trust signature + basic shape for now or use schema with .unknown(true)
   deduplicationMiddleware(),
   async (req, res) => {
     // Return 200 OK immediately to Twilio

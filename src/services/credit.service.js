@@ -118,7 +118,7 @@ class CreditService {
             FOR UPDATE
         `;
 
-            // (debug logging removed)
+        // (debug logging removed)
 
         if (!account || account.length === 0) {
             return { canPlace: false, reason: 'Credit account not found' };
@@ -144,7 +144,7 @@ class CreditService {
         const projectedBalance = currentBalance + Number(orderAmount);
 
         // DEBUG: log computed values to help tests diagnose failures
-            // (debug logging removed)
+        // (debug logging removed)
 
         // First check projected balance exceeds limit
         if (projectedBalance > creditLimit) {
@@ -192,120 +192,22 @@ class CreditService {
      * @param {string} options.reason - Reason for adjustment/reversal
      * @returns {Promise<Object>} Created ledger entry
      */
+    const ledgerService = require('./ledger.service');
+
+    // ... (inside class)
+
+    /**
+     * Create ledger entry (immutable) via LedgerService
+     */
     async createLedgerEntry(retailerId, wholesalerId, entryType, amount, options = {}) {
-        const {
-            orderId = null,
-            dueDate = null,
-            createdBy = 'SYSTEM',
-            referenceId = null,
-            reason = null
-        } = options;
-
-        if (amount <= 0) {
-            throw new Error('Amount must be positive');
-        }
-
-        return withTransaction(async (tx) => {
-            // Lock credit account row
-            await tx.$queryRaw`
-                SELECT 1 FROM retailer_wholesaler_credits
-                WHERE "retailerId" = ${retailerId} AND "wholesalerId" = ${wholesalerId}
-                FOR UPDATE
-            `;
-
-            // Calculate current balance from all entries
-            const entries = await tx.ledgerEntry.findMany({
-                where: {
-                    retailerId,
-                    wholesalerId
-                },
-                orderBy: { createdAt: 'asc' },
-                select: {
-                    entryType: true,
-                    amount: true
-                }
-            });
-
-            let currentBalance = 0;
-            for (const entry of entries) {
-                const entryAmount = Number(entry.amount);
-                switch (entry.entryType) {
-                    case 'DEBIT':
-                        currentBalance += entryAmount;
-                        break;
-                    case 'CREDIT':
-                        currentBalance -= entryAmount;
-                        break;
-                    case 'ADJUSTMENT':
-                        currentBalance += entryAmount;
-                        break;
-                    case 'REVERSAL':
-                        currentBalance -= entryAmount;
-                        break;
-                }
-            }
-
-            // Calculate new balance based on entry type
-            let newBalance = currentBalance;
-            const entryAmount = Number(amount);
-
-            switch (entryType) {
-                case 'DEBIT':
-                    newBalance = currentBalance + entryAmount;
-                    break;
-                case 'CREDIT':
-                    newBalance = currentBalance - entryAmount;
-                    break;
-                case 'ADJUSTMENT':
-                    // Adjustment can be positive or negative
-                    newBalance = currentBalance + entryAmount;
-                    break;
-                case 'REVERSAL':
-                    // Reversal negates a previous entry
-                    if (referenceId) {
-                        const originalEntry = await tx.ledgerEntry.findUnique({
-                            where: { id: referenceId }
-                        });
-                        if (!originalEntry) {
-                            throw new Error(`Original entry ${referenceId} not found for reversal`);
-                        }
-                        // Reverse the original entry's effect
-                        const originalAmount = Number(originalEntry.amount);
-                        if (originalEntry.entryType === 'DEBIT') {
-                            newBalance = currentBalance - originalAmount;
-                        } else if (originalEntry.entryType === 'CREDIT') {
-                            newBalance = currentBalance + originalAmount;
-                        } else {
-                            newBalance = currentBalance - originalAmount;
-                        }
-                    } else {
-                        // Simple reversal (decrease balance)
-                        newBalance = currentBalance - entryAmount;
-                    }
-                    break;
-            }
-
-            // Create immutable ledger entry
-            const entry = await tx.ledgerEntry.create({
-                data: {
-                    retailerId,
-                    wholesalerId,
-                    orderId,
-                    entryType,
-                    amount: entryAmount,
-                    balanceAfter: newBalance, // Stored for performance, but calculated from entries
-                    dueDate: dueDate ? new Date(dueDate) : null,
-                    createdBy,
-                    // Store metadata in a JSON field if available, or use reason field
-                }
-            });
-
-            return entry;
-        }, {
-            operation: 'CREATE_LEDGER_ENTRY',
-            entityId: orderId || `${retailerId}-${wholesalerId}`,
-            entityType: 'LedgerEntry',
-            timeout: 10000
+        return ledgerService.recordTransaction({
+            retailerId,
+            wholesalerId,
+            amount,
+            type: entryType,
+            orderId: options.orderId,
+            idempotencyKey: options.idempotencyKey || `${retailerId}-${wholesalerId}-${Date.now()}-${Math.random()}`, // Fallback if not provided
+            description: options.reason || options.referenceId
         });
     }
 

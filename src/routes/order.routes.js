@@ -5,12 +5,15 @@ const { authenticate } = require('../middleware/auth.middleware');
 const { isAdmin } = require('../middleware/admin.middleware');
 const { orderCreationRateLimiter } = require('../middleware/rateLimit.middleware');
 
+const validate = require('../middleware/validation.middleware');
+const { createOrderSchema, getOrderParamsSchema } = require('../validators/schemas');
+
 router.use(authenticate);
 
 // User routes (with rate limiting for order creation)
-router.post('/', orderCreationRateLimiter, orderController.createOrder);
+router.post('/', orderCreationRateLimiter, validate(createOrderSchema), orderController.createOrder);
 router.get('/', orderController.getUserOrders);
-router.get('/:id', orderController.getOrder);
+router.get('/:id', validate(getOrderParamsSchema, 'params'), orderController.getOrder);
 router.put('/:id/cancel', orderController.cancelOrder);
 
 // Admin routes

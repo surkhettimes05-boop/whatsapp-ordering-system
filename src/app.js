@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
-require('dotenv').config();
+const config = require('./config/env.config'); // Validates env vars on startup
 
 // Import middleware
 const { requestLogger, logger } = require('./config/logger');
@@ -104,11 +104,11 @@ try {
 } catch (e) {
   console.error('❌ Error loading API routes:', e.message);
   // Log full stack in dev
-  if (process.env.NODE_ENV !== 'production') console.error(e.stack);
+  if (config.env !== 'production') console.error(e.stack);
 }
 
 // Start alert monitoring
-if (process.env.NODE_ENV !== 'test' && startAlertMonitoring) {
+if (config.env !== 'test' && startAlertMonitoring) {
   try {
     startAlertMonitoring();
     logger.info('Alert monitoring initialized');
@@ -134,8 +134,8 @@ function fallbackToLegacyJobs() {
   }
 }
 
-if (process.env.NODE_ENV !== 'test') {
-  const isRedisConfigured = process.env.REDIS_HOST || process.env.REDIS_URL || process.env.NODE_ENV === 'production';
+if (config.env !== 'test') {
+  const isRedisConfigured = config.redis.host || config.env === 'production';
 
   if (isRedisConfigured) {
     try {
@@ -165,10 +165,10 @@ app.use((req, res) => {
 // Error handler (MUST be last!)
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = config.port || 5000;
 
 // Start server with error handling
-if (require.main === module && process.env.NODE_ENV !== 'test') {
+if (require.main === module && config.env !== 'test') {
   const server = app.listen(PORT, () => {
     console.log('================================');
     console.log(`🚀 Server running on port ${PORT}`);

@@ -11,10 +11,10 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-import prisma from '../config/prismaClient.js';
+const prisma = require('../config/database');
 
 class CreditCheckService {
-  
+
   /**
    * Calculate current outstanding balance for a retailer-wholesaler pair
    * Balance = SUM(DEBIT entries) - SUM(CREDIT entries)
@@ -116,29 +116,37 @@ class CreditCheckService {
 
       // 4. Get current balance
       const balanceData = await this.getOutstandingBalance(retailerId, wholesalerId);
-      const projectedBalance = balanceData.balance + Number(orderAmount);
+      // Use Decimal for precision
+      const currentBalanceDecimal = balanceData.balanceDecimal || new Decimal(balanceData.balance);
+      const orderAmountDecimal = new Decimal(orderAmount);
+
+      const projectedBalance = currentBalanceDecimal.plus(orderAmountDecimal);
+      const creditLimitDecimal = new Decimal(creditConfig.creditLimit);
 
       // 5. Check if projected balance exceeds limit
-      if (projectedBalance > Number(creditConfig.creditLimit)) {
+      if (projectedBalance.gt(creditLimitDecimal)) {
         return {
           canPlace: false,
-          reason: `Credit limit exceeded. Order would bring balance to ${projectedBalance}, limit is ${creditConfig.creditLimit}`,
-          currentBalance: balanceData.balance,
-          projectedBalance,
-          creditLimit: Number(creditConfig.creditLimit),
-          availableCredit: Number(creditConfig.creditLimit) - balanceData.balance,
+          reason: `Credit limit exceeded. Order would bring balance to ${projectedBalance.toFixed(2)}, limit is ${creditLimitDecimal.toFixed(2)}`,
+          currentBalance: currentBalanceDecimal.toNumber(),
+          projectedBalance: projectedBalance.toNumber(),
+          creditLimit: creditLimitDecimal.toNumber(),
+          availableCredit: creditLimitDecimal.minus(currentBalanceDecimal).toNumber(),
         };
       }
 
       // 6. Check for overdue payments
       const overdueEntries = await this.getOverdueEntries(retailerId, wholesalerId);
       if (overdueEntries.length > 0) {
+        // Calculate overdue amount properly
+        const overdueAmount = overdueEntries.reduce((sum, e) => sum.plus(new Decimal(e.amount)), new Decimal(0));
+
         return {
           canPlace: false,
           reason: `Outstanding overdue payments from ${overdueEntries.length} order(s)`,
-          currentBalance: balanceData.balance,
-          creditLimit: Number(creditConfig.creditLimit),
-          overdueAmount: overdueEntries.reduce((sum, e) => sum + Number(e.amount), 0),
+          currentBalance: currentBalanceDecimal.toNumber(),
+          creditLimit: creditLimitDecimal.toNumber(),
+          overdueAmount: overdueAmount.toNumber(),
         };
       }
 
@@ -207,7 +215,7 @@ class CreditCheckService {
     // - If standalone: Any error rolls back just this entry
     // - If called from transaction: Entire transaction rolls back if this fails
     // ============================================
-    
+
     try {
       // Use provided transaction context or default to prisma
       const tx = options.tx || prisma;
@@ -293,7 +301,7 @@ class CreditCheckService {
     // - If standalone: Any error rolls back just this entry
     // - If called from transaction: Entire transaction rolls back if this fails
     // ============================================
-    
+
     try {
       // Use provided transaction context or default to prisma
       const tx = options.tx || prisma;
@@ -364,7 +372,7 @@ class CreditCheckService {
     // - If standalone: Any error rolls back just this entry
     // - If called from transaction: Entire transaction rolls back if this fails
     // ============================================
-    
+
     if (!options.approvedBy) {
       throw new Error('Adjustment requires approvedBy (admin user ID)');
     }

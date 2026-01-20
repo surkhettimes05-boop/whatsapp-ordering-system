@@ -1,26 +1,49 @@
-FROM node:18-alpine
+# Multi-stage build for optimized production image
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (including devDependencies for build steps if any, but clean later)
+RUN npm ci
 
-# Copy application code
+# Copy source code
 COPY . .
 
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Final stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy generated prisma client and source code from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/prisma ./prisma
+# Copy other necessary files (like scripts if any)
+COPY --from=builder /app/package.json .
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=5000
+
 # Expose port
-EXPOSE 3000
+EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-    CMD node -e "require('http').get('http://localhost:3000/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Copy startup script
+COPY start.sh .
+RUN chmod +x start.sh
 
-# Start application
-CMD ["npm", "start"]
+# Start command
+CMD ["./start.sh"]

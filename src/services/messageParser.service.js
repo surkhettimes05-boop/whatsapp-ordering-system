@@ -52,6 +52,42 @@ class MessageParser {
     isVendorBid(message) {
         return this.parseVendorBid(message) !== null;
     }
+
+    /**
+     * Parse simple order string (e.g. "1 x 10")
+     * @param {string} text 
+     * @returns {Object|null} { index, quantity }
+     */
+    parseOrderItem(text) {
+        const orderMatch = text.match(/^(\d+)\s*[xX*]\s*(\d+)$/);
+        if (orderMatch) {
+            return {
+                index: parseInt(orderMatch[1]),
+                quantity: parseInt(orderMatch[2])
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Identify intent from text
+     * @param {string} text 
+     * @returns {string} Intent code (MENU, CATALOG, CREDIT, RECENT_ORDER, PLACE_ORDER, CONFIRM, CANCEL, UNKNOWN)
+     */
+    getIntent(text) {
+        if (!text) return 'UNKNOWN';
+        const lower = text.toLowerCase().trim();
+
+        if (['hi', 'hello', 'start', 'menu'].includes(lower)) return 'MENU';
+        if (['view catalog', '1'].includes(lower)) return 'CATALOG';
+        if (['check credit', '2'].includes(lower)) return 'CREDIT';
+        if (['recent orders', '3'].includes(lower)) return 'RECENT_ORDERS';
+        if (['place order', 'checkout'].includes(lower)) return 'PLACE_ORDER';
+        if (['yes', 'confirm', 'ok'].includes(lower)) return 'CONFIRM';
+        if (['no', 'cancel'].includes(lower)) return 'CANCEL';
+
+        return 'UNKNOWN';
+    }
 }
 
 module.exports = new MessageParser();

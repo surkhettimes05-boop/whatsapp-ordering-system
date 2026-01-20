@@ -71,7 +71,45 @@ async function broadcastOrder(orderId) {
   };
 }
 
+/**
+ * Notify other wholesalers that the order is taken.
+ */
+async function notifyLosers(orderId, winnerWholesalerId) {
+  // 1. Get the routing history to find candidates
+  const routing = await prisma.orderRouting.findFirst({
+    where: { orderId },
+    orderBy: { timestamp: 'desc' }
+  });
+
+  if (!routing || !routing.candidateWholesalers) return;
+
+  let candidates = [];
+  try {
+    candidates = JSON.parse(routing.candidateWholesalers);
+  } catch (e) {
+    console.error('Failed to parse candidate wholesalers:', e);
+    return;
+  }
+
+  // 2. Filter out the winner
+  const losers = candidates.filter(wId => wId !== winnerWholesalerId);
+
+  // 3. Send "Order Taken" message
+  for (const loserId of losers) {
+    const wholesaler = await wholesalerService.getWholesalerById(loserId);
+    if (wholesaler && wholesaler.whatsappNumber) {
+      await whatsappService.sendMessage(
+        wholesaler.whatsappNumber,
+        `❌ Order #${orderId} has been accepted by another vendor.`
+      );
+    }
+  }
+
+  console.log(`Logers notified for Order ${orderId}: ${losers.length}`);
+}
+
 module.exports = {
   broadcastOrder,
+  notifyLosers
 };
 

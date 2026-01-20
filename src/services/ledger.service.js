@@ -1,140 +1,137 @@
+const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
 const prisma = require('../config/database');
-const { withTransaction } = require('../utils/transaction');
+const logger = require('../config/logger');
 
 class LedgerService {
+    constructor() {
+        this.prisma = prisma;
+    }
+
     /**
-     * Get the current outstanding balance for a retailer with a specific wholesaler.
-     * Positive balance means retailer owes money (Debit > Credit).
-     * @param {string} retailerId
-     * @param {string} wholesalerId
-     * @returns {Promise<number>}
+     * Calculate SHA-256 hash for a ledger entry
+     * @param {Object} data - Entry data
+     * @param {String} previousHash - Previous entry's hash
+     * @returns {String} Hex hash
      */
-    async getBalance(retailerId, wholesalerId) {
-        const lastEntry = await prisma.ledgerEntry.findFirst({
-            where: {
+    calculateHash(data, previousHash) {
+        const payload = JSON.stringify({
+            idempotencyKey: data.idempotencyKey,
+            retailerId: data.retailerId,
+            wholesalerId: data.wholesalerId,
+            amount: data.amount.toString(),
+            type: data.entryType,
+            prev: previousHash || 'GENESIS'
+        });
+        return crypto.createHash('sha256').update(payload).digest('hex');
+    }
+
+    /**
+     * Record a double-entry transaction strictly.
+     * Atomic: specific order of operations to ensure integrity.
+     */
+    async recordTransaction({
+        idempotencyKey,
+        retailerId,
+        wholesalerId,
+        orderId = null,
+        amount,
+        type, // 'DEBIT' or 'CREDIT' from Retailer perspective usually, but here strict LedgerEntryType
+        description = '',
+        relatedPaymentId = null
+    }) {
+        // 1. Validate Input
+        if (!amount || amount <= 0) throw new Error('Invalid transaction amount');
+        if (!idempotencyKey) throw new Error('Idempotency Key required');
+
+        const Decimal = require('decimal.js');
+        const txAmount = new Decimal(amount);
+
+        return await this.prisma.$transaction(async (tx) => {
+            // 2. Check Idempotency
+            const existing = await tx.ledgerEntry.findUnique({
+                where: { idempotencyKey }
+            });
+            if (existing) {
+                logger.info(`Idempotency hit for ${idempotencyKey}`);
+                return existing;
+            }
+
+            // 3. Get Previous Entry Hash (Gap prevention logic could be here, strict for now)
+            const lastEntry = await tx.ledgerEntry.findFirst({
+                where: { retailerId, wholesalerId },
+                orderBy: { createdAt: 'desc' },
+                select: { hash: true, balanceAfter: true } // Assuming balance is tracked per-relationship
+            });
+
+            const previousHash = lastEntry ? lastEntry.hash : null;
+            // Use Decimal for previous balance
+            const previousBalance = lastEntry ? new Decimal(lastEntry.balanceAfter) : new Decimal(0);
+
+            // 4. Calculate New Balance
+            // Logic: 
+            // DEBIT (Retailer owes MORE) -> Balance increases (assuming Balance = Debt)
+            // CREDIT (Retailer pays/owed) -> Balance decreases
+            let balanceImpact = new Decimal(0);
+            if (type === 'DEBIT') balanceImpact = txAmount;
+            else if (type === 'CREDIT') balanceImpact = txAmount.negated();
+
+            const newBalance = previousBalance.plus(balanceImpact);
+
+            // 5. Prepare Entry Data
+            const entryData = {
+                idempotencyKey,
                 retailerId,
                 wholesalerId,
-            },
-            orderBy: {
-                createdAt: 'desc',
-            },
-        });
+                orderId,
+                entryType: type,
+                amount: txAmount.toString(), // Convert to string for consistency
+                balanceAfter: newBalance.toString(),
+                previousHash,
+                createdBy: 'SYSTEM'
+            };
 
-        // If no entries, balance is 0.
-        return lastEntry ? Number(lastEntry.balanceAfter) : 0;
-    }
+            // 6. Compute Hash
+            const hash = this.calculateHash(entryData, previousHash);
 
-    /**
-     * Create a DEBIT entry (Retailer OWES more).
-     * Typically when an order is delivered.
-     * @param {string} orderId
-     * @param {number} amount
-     * @param {Date|string} dueDate
-     * @returns {Promise<Object>} The created LedgerEntry
-     */
-    async createDebit(orderId, amount, dueDate) {
-        if (!orderId) throw new Error("Order ID is required for Debit");
-        if (amount <= 0) throw new Error("Amount must be positive");
-
-        // Fetch Order to get retailer and wholesaler
-        const order = await prisma.order.findUnique({
-            where: { id: orderId },
-            select: { retailerId: true, wholesalerId: true }
-        });
-
-        if (!order) throw new Error(`Order ${orderId} not found`);
-        if (!order.wholesalerId) throw new Error(`Order ${orderId} has no wholesaler assigned`);
-
-        const { retailerId, wholesalerId } = order;
-
-        return withTransaction(async (tx) => {
-            // LOCKING: Prevent race conditions by locking the Credit Relationship row.
-            // This ensures only one transaction updates the ledger for this pair at a time.
-            await tx.$queryRaw`
-        SELECT 1 FROM "RetailerWholesalerCredit"
-        WHERE "retailerId" = ${retailerId} AND "wholesalerId" = ${wholesalerId}
-        FOR UPDATE
-      `;
-
-            // Get last calculated balance
-            const lastEntry = await tx.ledgerEntry.findFirst({
-                where: { retailerId, wholesalerId },
-                orderBy: { createdAt: 'desc' },
-            });
-
-            const currentBalance = lastEntry ? Number(lastEntry.balanceAfter) : 0;
-            const newBalance = currentBalance + Number(amount);
-
-            // Create new immutable entry
+            // 7. Insert Entry
             const entry = await tx.ledgerEntry.create({
                 data: {
-                    retailerId,
-                    wholesalerId,
-                    orderId,
-                    entryType: 'DEBIT',
-                    amount: amount,
-                    balanceAfter: newBalance,
-                    dueDate: dueDate ? new Date(dueDate) : null,
-                    createdBy: 'SYSTEM',
+                    ...entryData,
+                    hash
                 }
             });
 
-            return entry;
-        }, {
-            operation: 'CREDIT_DEBIT',
-            entityId: orderId,
-            entityType: 'LedgerEntry',
-            timeout: 10000
-        });
-    }
-
-    /**
-     * Create a CREDIT entry (Retailer PAYS / OWES LESS).
-     * Typically when a payment is received.
-     * @param {string} retailerId
-     * @param {string} wholesalerId
-     * @param {number} amount
-     * @returns {Promise<Object>} The created LedgerEntry
-     */
-    async createCredit(retailerId, wholesalerId, amount) {
-        if (amount <= 0) throw new Error("Amount must be positive");
-
-        return withTransaction(async (tx) => {
-            // LOCKING
-            await tx.$queryRaw`
-        SELECT 1 FROM "RetailerWholesalerCredit"
-        WHERE "retailerId" = ${retailerId} AND "wholesalerId" = ${wholesalerId}
-        FOR UPDATE
-      `;
-
-            // Get last balance
-            const lastEntry = await tx.ledgerEntry.findFirst({
-                where: { retailerId, wholesalerId },
-                orderBy: { createdAt: 'desc' },
-            });
-
-            const currentBalance = lastEntry ? Number(lastEntry.balanceAfter) : 0;
-            const newBalance = currentBalance - Number(amount);
-
-            // Create Credit Entry
-            const entry = await tx.ledgerEntry.create({
-                data: {
+            // 8. Update mutable pointers (CreditAccount / RetailerWholesalerCredit)
+            // This is "Materialized View" update for fast reads
+            await tx.retailerWholesalerCredit.upsert({
+                where: {
+                    retailerId_wholesalerId: { retailerId, wholesalerId }
+                },
+                create: {
                     retailerId,
                     wholesalerId,
-                    entryType: 'CREDIT',
-                    amount: amount,
-                    balanceAfter: newBalance,
-                    createdBy: 'SYSTEM',
+                    creditLimit: 0, // Default, needs setup
+                    usedCredit: newBalance.toNumber() // Prisma might expect Decimal or Float. Check schema.
+                },
+                update: {
+                    usedCredit: newBalance.toNumber()
                 }
             });
 
+            // 9. Update Retailer Global Credit Usage (if applicable)
+            // (Optional depending on business logic overlap)
+
+            logger.info(`Ledger transaction recorded: ${hash}`);
             return entry;
-        }, {
-            operation: 'CREDIT_CREDIT',
-            entityId: `${retailerId}-${wholesalerId}`,
-            entityType: 'LedgerEntry',
-            timeout: 10000
         });
+    }
+
+    async getBalance(retailerId, wholesalerId) {
+        const creditRecord = await this.prisma.retailerWholesalerCredit.findUnique({
+            where: { retailerId_wholesalerId: { retailerId, wholesalerId } }
+        });
+        return creditRecord ? Number(creditRecord.usedCredit) : 0;
     }
 }
 

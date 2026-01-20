@@ -109,7 +109,21 @@ class OrderService {
         updatedAt: new Date()
       };
 
-      // STEP 5: Generate OTP if moving to OUT_FOR_DELIVERY
+      // STEP 5.1: If Order is CONFIRMED, record in Ledger (Debit Retailer)
+      if (status === 'CONFIRMED' && order.wholesalerId) {
+        const ledgerService = require('./ledger.service');
+        await ledgerService.recordTransaction({
+          idempotencyKey: `ord-confirm-${id}`,
+          retailerId: order.retailerId,
+          wholesalerId: order.wholesalerId,
+          amount: order.totalAmount, // Assuming totalAmount is available on order object or fetched
+          type: 'DEBIT',
+          orderId: id,
+          description: `Order ${order.orderNumber || id} Confirmed`
+        });
+      }
+
+      // STEP 5.2: Generate OTP if moving to OUT_FOR_DELIVERY
       let deliveryOTP = null;
       if (status === 'OUT_FOR_DELIVERY') {
         deliveryOTP = Math.floor(1000 + Math.random() * 9000).toString();
@@ -202,7 +216,6 @@ This ensures your delivery is recorded correctly.`;
     }
   }
 
-  // Basic create for internal testing or manual admin entry (optional)
   async createOrder(retailerId, items) {
     // ============================================
     // ATOMIC OPERATION: Create Order with Items

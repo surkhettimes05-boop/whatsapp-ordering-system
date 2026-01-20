@@ -362,6 +362,7 @@ model WholesalerProduct {
 model Order {
 	id                  String             @id @default(cuid())
 	orderNumber         String             @unique // Human-readable order number
+	idempotencyKey      String?            @unique // FN-01: Idempotency for API/Webhook reliability
 	retailerId          String
 	wholesalerId        String?            // Assigned wholesaler
 	finalWholesalerId   String?            // ENFORCED: One winning wholesaler (via unique constraint)
@@ -482,6 +483,19 @@ model OrderImage {
 	@@map("order_images")
 }
 
+model OrderEvent {
+	id          String   @id @default(uuid())
+	orderId     String
+	eventType   String   // e.g. "BROADCAST", "ACCEPT_ATTEMPT", "LOCKED", "CANCELLED_OTHERS"
+	payload     String?  // JSON context
+	timestamp   DateTime @default(now())
+	order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+	@@index([orderId])
+	@@index([eventType])
+	@@map("order_events")
+}
+
 model OrderRouting {
 	id                   String      @id @default(cuid())
 	orderId              String
@@ -548,6 +562,7 @@ model RetailerWholesalerCredit {
 
 model LedgerEntry {
 	id           String             @id @default(uuid())
+	idempotencyKey String           @unique // FN-01: Critical for financial reliability
 	retailerId   String
 	wholesalerId String
 	orderId      String?
@@ -556,6 +571,11 @@ model LedgerEntry {
 	balanceAfter Decimal
 	dueDate      DateTime?
 	createdBy    LedgerEntryCreator @default(SYSTEM)
+	
+	// FN-02: Tamper-evident chain
+	hash         String             // SHA-256 hash of this entry
+	previousHash String?            // Hash of the previous entry (null for genesis)
+
 	createdAt    DateTime           @default(now())
 	// IMMUTABLE: No updatedAt, no delete - append-only ledger
   
@@ -583,6 +603,8 @@ model RetailerPayment {
 	chequeNumber  String?
 	chequeDate    DateTime?
 	bankName      String?
+	externalTransactionId String? @unique // FN-03: Bank/Gateway Transaction ID
+	gatewayResponse Json?         // FN-03: Raw proof from gateway
 	status        PaymentStatus @default(PENDING)
 	clearedDate   DateTime?
 	ledgerEntryId String?       @unique
@@ -711,7 +733,7 @@ model AuditLog {
 // WEBHOOK LOGGING
 // ============================================================================
 
-model WebhookLog {
+model WebhookEvent {
 	id            String          @id @default(uuid())
 	eventType     WebhookEventType
 	entityId      String          // ID of the entity that triggered the webhook
@@ -724,6 +746,7 @@ model WebhookLog {
 	errorMessage  String?
 	retryCount    Int             @default(0)
 	nextRetryAt   DateTime?
+	processingDuration Int?       // Analysis
 	createdAt     DateTime        @default(now())
 	processedAt   DateTime?
   
@@ -732,7 +755,7 @@ model WebhookLog {
 	@@index([status])
 	@@index([createdAt])
 	@@index([nextRetryAt])
-	@@map("webhook_logs")
+	@@map("webhook_events")
 }
 
 // ============================================================================
