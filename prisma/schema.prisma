@@ -397,6 +397,7 @@ model Order {
 	conflictLogs        DecisionConflictLog[]
 	ledgerEntries       LedgerEntry[]
 	orderImages         OrderImage[]
+	orderEvents         OrderEvent[]
 	creditTransactions  CreditTransaction[]
   
 
@@ -929,4 +930,251 @@ model ProcessedMessage {
 	@@index([processedAt])
 	@@index([createdAt])
 	@@map("processed_messages")
+}
+
+// ============================================================================
+// FINANCIAL REPORTING & ANALYSIS
+// ============================================================================
+
+model FinancialReport {
+	id                   String    @id @default(cuid())
+	reportDate           DateTime  // Date this report is for
+	reportType           String    // DAILY, WEEKLY, MONTHLY, ANNUAL
+	
+	// Retail Summary
+	totalRetailers       Int       @default(0)
+	activeRetailers      Int       @default(0)
+	
+	// Order Summary
+	totalOrders          Int       @default(0)
+	completedOrders      Int       @default(0)
+	cancelledOrders      Int       @default(0)
+	failedOrders         Int       @default(0)
+	
+	// Financial Summary (INR)
+	totalOrderValue      Decimal   @default(0) // Sum of all order subtotals
+	totalTax             Decimal   @default(0) // Total tax collected
+	totalGross           Decimal   @default(0) // totalOrderValue + totalTax
+	totalPaid            Decimal   @default(0) // Total payments received
+	totalOutstanding     Decimal   @default(0) // Total unpaid amount
+	
+	// Credit Summary
+	totalCreditLimits    Decimal   @default(0)
+	totalCreditUsed      Decimal   @default(0)
+	totalCreditAvailable Decimal   @default(0)
+	overdueCreditAmount  Decimal   @default(0)
+	
+	// Performance Metrics
+	avgOrderValue        Decimal   @default(0)
+	onTimeDeliveryRate   Float     @default(0)
+	orderFulfillmentRate Float     @default(0)
+	
+	// Metadata
+	generatedAt          DateTime  @default(now())
+	generatedBy          String?   // Admin ID who ran the report
+	notes                String?   // Additional context
+	createdAt            DateTime  @default(now())
+	
+	@@index([reportDate])
+	@@index([reportType])
+	@@index([generatedAt])
+	@@unique([reportDate, reportType])
+	@@map("financial_reports")
+}
+
+model TransactionAudit {
+	id                   String    @id @default(cuid())
+	
+	// Transaction Details
+	transactionId        String    // Reference to original transaction (payment/ledger entry ID)
+	transactionType      String    // PAYMENT, DEBIT, CREDIT, REVERSAL, ADJUSTMENT
+	referenceId          String?   // Order ID, Payment ID, etc.
+	
+	// Parties Involved
+	retailerId           String
+	wholesalerId         String?
+	initiatedBy          String    // User/system ID who initiated
+	approvedBy           String?   // Admin/system who approved
+	
+	// Amount & Status
+	amount               Decimal
+	status               String    // PENDING, APPROVED, REJECTED, COMPLETED, REVERSED
+	previousStatus       String?
+	
+	// Detailed Log
+	action               String    // CREATE, UPDATE, APPROVE, REJECT, PROCESS, REVERSE
+	reason               String?   // Why this action was taken
+	metadata             String?   // JSON: Additional context
+	
+	// Timestamps
+	requestedAt          DateTime  @default(now())
+	approvedAt           DateTime?
+	processedAt          DateTime?
+	completedAt          DateTime?
+	createdAt            DateTime  @default(now())
+	updatedAt            DateTime  @updatedAt
+	
+	@@index([transactionId])
+	@@index([transactionType])
+	@@index([retailerId])
+	@@index([wholesalerId])
+	@@index([status])
+	@@index([initiatedBy])
+	@@index([approvedBy])
+	@@index([requestedAt])
+	@@index([createdAt])
+	@@map("transaction_audits")
+}
+
+model FinancialReconciliation {
+	id                   String    @id @default(cuid())
+	
+	// Reconciliation Details
+	reconciliationType   String    // BANK, SYSTEM, VENDOR_STATEMENT
+	reconciliationDate   DateTime  // Date being reconciled
+	
+	// Parties
+	retailerId           String?
+	wholesalerId         String?
+	bankName             String?
+	
+	// Reconciliation Data
+	systemAmount         Decimal   // Amount in our system
+	externalAmount       Decimal   // Amount from bank/statement
+	discrepancy          Decimal   // Difference (should be 0)
+	isMatched            Boolean   @default(false)
+	
+	// Details
+	matchedTransactions  Int       @default(0) // Number of matched transactions
+	unmatchedCount       Int       @default(0) // Transactions not matched
+	unmatchedDetails     String?   // JSON: Details of unmatched items
+	
+	// Resolution
+	resolutionStatus     String    // PENDING, RESOLVED, ESCALATED, MANUAL_REVIEW
+	resolvedBy           String?   // Admin who resolved
+	resolutionNotes      String?
+	
+	// Timestamps
+	startedAt            DateTime  @default(now())
+	completedAt          DateTime?
+	createdAt            DateTime  @default(now())
+	updatedAt            DateTime  @updatedAt
+	
+	@@index([reconciliationType])
+	@@index([reconciliationDate])
+	@@index([retailerId])
+	@@index([wholesalerId])
+	@@index([isMatched])
+	@@index([resolutionStatus])
+	@@index([createdAt])
+	@@map("financial_reconciliations")
+}
+
+model FinancialSnapshot {
+	id                   String    @id @default(cuid())
+	
+	// Snapshot Details
+	snapshotDate         DateTime  // Date this snapshot is for
+	snapshotType         String    // DAILY, WEEKLY, EOD, EOW, EOM
+	
+	// Retail Metrics
+	retailerId           String?   // If null, this is a system-wide snapshot
+	totalRetailers       Int       @default(0)
+	
+	// Credit Metrics
+	totalCreditLimit     Decimal   @default(0)
+	totalCreditUsed      Decimal   @default(0)
+	totalCreditAvailable Decimal   @default(0)
+	overdueCreditCount   Int       @default(0)
+	overdueCreditAmount  Decimal   @default(0)
+	
+	// Order Metrics
+	pendingOrders        Int       @default(0)
+	completedOrders      Int       @default(0)
+	delayedOrders        Int       @default(0)
+	
+	// Financial Metrics (INR)
+	totalReceivables     Decimal   @default(0) // What we're owed
+	totalPayables        Decimal   @default(0) // What we owe
+	netPosition          Decimal   @default(0) // receivables - payables
+	
+	// Cash Flow
+	dailyInflow          Decimal   @default(0) // Payments received
+	dailyOutflow         Decimal   @default(0) // Disbursements made
+	netCashFlow          Decimal   @default(0) // inflow - outflow
+	
+	createdAt            DateTime  @default(now())
+	
+	@@index([snapshotDate])
+	@@index([snapshotType])
+	@@index([retailerId])
+	@@unique([snapshotDate, snapshotType, retailerId])
+	@@map("financial_snapshots")
+}
+
+model ComplianceLog {
+	id                   String    @id @default(cuid())
+	
+	// Compliance Details
+	complianceType       String    // TAX, GDPR, PAYMENT_REGULATION, ACCOUNTING_STANDARD
+	requirement          String    // What rule/requirement
+	
+	// Scope
+	applicableTo         String?   // Retailer ID, Wholesaler ID, or null for system-wide
+	
+	// Compliance Check
+	isCompliant          Boolean   @default(false)
+	checkPerformedAt     DateTime  @default(now())
+	checkPerformedBy     String?   // Admin/system ID
+	
+	// Details
+	evidence             String?   // JSON: Documents/proof of compliance
+	violations           String?   // JSON: List of violations if not compliant
+	remediationDue       DateTime?
+	remediationCompleted DateTime?
+	
+	// Notes
+	notes                String?
+	createdAt            DateTime  @default(now())
+	updatedAt            DateTime  @updatedAt
+	
+	@@index([complianceType])
+	@@index([applicableTo])
+	@@index([isCompliant])
+	@@index([checkPerformedAt])
+	@@index([createdAt])
+	@@map("compliance_logs")
+}
+
+model SystemAuditLog {
+	id                   String    @id @default(cuid())
+	
+	// System Action
+	action               String    // SCHEMA_CHANGE, CONFIG_UPDATE, USER_SYNC, DATA_EXPORT, BATCH_PROCESS
+	component            String    // Affected component (orders, credit, ledger, etc.)
+	
+	// Actor
+	performedBy          String    // Admin ID or SYSTEM
+	
+	// Details
+	description          String
+	oldValue             String?   // JSON: Previous state
+	newValue             String?   // JSON: New state
+	impact               String?   // CRITICAL, HIGH, MEDIUM, LOW
+	
+	// Outcome
+	status               String    // SUCCESS, FAILURE, PARTIAL
+	errorMessage         String?
+	recordsAffected      Int?
+	
+	// Metadata
+	metadata             String?   // JSON: Additional context
+	createdAt            DateTime  @default(now())
+	
+	@@index([action])
+	@@index([component])
+	@@index([performedBy])
+	@@index([status])
+	@@index([createdAt])
+	@@map("system_audit_logs")
 }
