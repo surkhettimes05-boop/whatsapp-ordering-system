@@ -31,26 +31,27 @@ class CreditCheckService {
       },
     });
 
-    // Sum up debits and credits
+    // Sum up debits and credits using Decimal
     const totalDebits = ledgerEntries
       .filter(e => e.entryType === 'DEBIT')
-      .reduce((sum, e) => sum + Number(e.amount), 0);
+      .reduce((sum, e) => sum.plus(new Decimal(e.amount)), new Decimal(0));
 
     const totalCredits = ledgerEntries
       .filter(e => e.entryType === 'CREDIT')
-      .reduce((sum, e) => sum + Number(e.amount), 0);
+      .reduce((sum, e) => sum.plus(new Decimal(e.amount)), new Decimal(0));
 
     const adjustments = ledgerEntries
       .filter(e => e.entryType === 'ADJUSTMENT')
-      .reduce((sum, e) => sum + Number(e.amount), 0);
+      .reduce((sum, e) => sum.plus(new Decimal(e.amount)), new Decimal(0));
 
-    const balance = totalDebits - totalCredits + adjustments;
+    const balance = totalDebits.minus(totalCredits).plus(adjustments);
 
     return {
-      balance: Number(balance),
-      totalDebits: Number(totalDebits),
-      totalCredits: Number(totalCredits),
-      adjustments: Number(adjustments),
+      balance: balance.toNumber(), // Return as Number for display/ API
+      balanceDecimal: balance,      // Return Decimal for internal precise usage
+      totalDebits: totalDebits.toNumber(),
+      totalCredits: totalCredits.toNumber(),
+      adjustments: adjustments.toNumber(),
       entries: ledgerEntries,
     };
   }

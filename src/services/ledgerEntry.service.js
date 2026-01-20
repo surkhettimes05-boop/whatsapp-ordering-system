@@ -6,8 +6,7 @@
  * The ledger is the source of truth for all credit calculations
  */
 
-const { PrismaClient } = require('@prisma/client');
-import prisma from '../config/prismaClient.js';
+const prisma = require('../config/database');
 
 class LedgerService {
 

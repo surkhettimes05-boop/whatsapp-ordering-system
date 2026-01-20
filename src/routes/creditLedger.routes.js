@@ -90,9 +90,6 @@ router.post('/setup',
         });
       }
 
-      const { PrismaClient } = require('@prisma/client');
-      import prisma from '../config/prismaClient.js';
-
       const config = await prisma.retailerWholesalerCredit.upsert({
         where: {
           retailerId_wholesalerId: {
