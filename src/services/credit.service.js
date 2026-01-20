@@ -11,6 +11,7 @@
 
 const prisma = require('../config/database');
 const { withTransaction } = require('../utils/transaction');
+const ledgerService = require('./ledger.service');
 
 class CreditService {
     /**
@@ -192,7 +193,6 @@ class CreditService {
      * @param {string} options.reason - Reason for adjustment/reversal
      * @returns {Promise<Object>} Created ledger entry
      */
-    const ledgerService = require('./ledger.service');
 
     // ... (inside class)
 

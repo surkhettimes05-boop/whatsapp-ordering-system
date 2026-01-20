@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { adminRateLimiter } = require('../middleware/rateLimit.middleware');
 const adminController = require('../controllers/admin.controller');
-const creditController = require('../controllers/credit.controller');
 const { authenticate, isAdmin } = require('../middleware/auth.middleware');
 
 router.use(authenticate, isAdmin);
@@ -18,7 +17,7 @@ router.get('/orders', adminController.getAllOrders);
 router.put('/orders/:id/status', adminController.updateOrderStatus);
 
 // New credit management endpoints
-router.use('/credit', creditController);
+// (Credit routes are mounted separately in app.js)
 
 // Order Decision Engine endpoints
 router.post('/orders/:orderId/assign-winner', adminController.assignOrderWinner);

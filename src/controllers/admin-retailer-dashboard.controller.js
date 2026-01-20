@@ -10,7 +10,7 @@
  */
 
 const prisma = require('../config/database');
-const logger = require('../config/winston-logger').getLogger('admin-dashboard');
+const logger = require('../config/winston-logger').logger;
 
 class AdminRetailerDashboardController {
   /**
