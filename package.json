@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "test:e2e": "cd backend && npm install && npm run db:migrate && npx prisma generate && npm run db:seed && cd .. && start-server-and-test \"cd backend && npm start\" http://localhost:5000 \"cd frontend && npm install && npm test\""
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
+    "@jest/globals": "^30.2.0",
+    "jest": "^30.2.0",
+    "prisma": "^7.2.0",
+    "start-server-and-test": "^2.1.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.2.0"
+  }
+}
