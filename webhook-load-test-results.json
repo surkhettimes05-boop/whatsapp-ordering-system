@@ -1,0 +1,32 @@
+{
+  "scenario": "Moderate load: 50 concurrent",
+  "timestamp": "2026-01-22T14:46:01.577Z",
+  "duration": 60.0789325,
+  "stats": {
+    "totalRequests": 10300,
+    "successfulRequests": 0,
+    "failedRequests": 10300,
+    "errorRate": 100,
+    "rps": 171.44,
+    "responseTimes": {
+      "p50": 84.79869999999937,
+      "p95": 312.55790000000025,
+      "p99": 647.1254999999983,
+      "min": 26.47230000000127,
+      "max": 1877.3646999999999,
+      "avg": 124.28121890291311
+    }
+  },
+  "errors": {
+    "HTTP 500": {
+      "count": 10300,
+      "samples": [
+        "Unknown",
+        "Unknown",
+        "Unknown",
+        "Unknown",
+        "Unknown"
+      ]
+    }
+  }
+}

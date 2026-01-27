@@ -13,7 +13,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "check": "node check-setup.js",
-    "setup": "npm install && npx prisma generate && node check-setup.js"
+    "setup": "npm install && npx prisma generate && node check-setup.js",
+    "reconcile": "node src/cli/reconcile.js",
+    "reconcile:daily": "node -e \"require('./src/jobs/daily-reconciliation.job').runDailyReconciliation({save_report: true, send_alerts: true})\""
   },
   "keywords": [],
   "author": "",

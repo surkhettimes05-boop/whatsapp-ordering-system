@@ -1,7 +1,10 @@
 /**
  * Order Expiry Processor
  * 
- * Processes order expiry jobs
+ * Processes order expiry jobs using strict state machine
+ * - Validates state before transition
+ * - Writes all state changes to order_events
+ * - Atomically transitions order status
  */
 
 const prisma = require('../../config/database');
@@ -27,8 +30,7 @@ async function processOrderExpiry(job) {
             select: {
                 id: true,
                 status: true,
-                expiresAt: true,
-                final_wholesaler_id: true
+                expiresAt: true
             }
         });
 
@@ -36,11 +38,11 @@ async function processOrderExpiry(job) {
             throw new Error(`Order ${orderId} not found`);
         }
 
-        // Check if order is already processed
-        if (order.status === 'CANCELLED' || order.status === 'DELIVERED' || order.final_wholesaler_id) {
+        // Check if order is already in terminal state
+        if (orderStateMachine.TERMINAL_STATES.includes(order.status)) {
             return {
                 success: true,
-                message: `Order ${orderId} already processed`,
+                message: `Order ${orderId} already in terminal state: ${order.status}`,
                 skipped: true
             };
         }
@@ -54,13 +56,34 @@ async function processOrderExpiry(job) {
             };
         }
 
-        // Cancel expired order
-        await orderStateMachine.transitionOrderStatus(
+        // Validate transition before attempting
+        const validation = await orderStateMachine.validateTransition(
+            orderId,
+            order.status,
+            'CANCELLED'
+        );
+
+        if (!validation.valid) {
+            return {
+                success: false,
+                error: validation.error,
+                orderId,
+                currentStatus: order.status,
+                attempted_transition: 'CANCELLED'
+            };
+        }
+
+        // Cancel expired order with atomic state machine
+        // This automatically:
+        // 1. Updates order.status
+        // 2. Writes to order_events table
+        // 3. Logs to AdminAuditLog
+        const updatedOrder = await orderStateMachine.transitionOrderStatus(
             orderId,
             'CANCELLED',
             {
                 performedBy: 'SYSTEM',
-                reason: 'Order expired'
+                reason: 'Order expired - no vendor accepted within timeout'
             }
         );
 
@@ -70,6 +93,8 @@ async function processOrderExpiry(job) {
         return {
             success: true,
             orderId,
+            previousStatus: order.status,
+            newStatus: updatedOrder.status,
             action: 'cancelled',
             timestamp: new Date().toISOString()
         };

@@ -4,6 +4,7 @@ node_modules/
 # Environment variables (SECRETS!)
 .env
 .env.local
+.env.production
 
 # Logs
 *.log

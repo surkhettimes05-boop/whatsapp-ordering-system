@@ -98,6 +98,7 @@ try {
   app.use('/api/v1/credit', require('./routes/credit.routes'));
   app.use('/api/v1/bidding', require('./routes/bidding.routes'));
   app.use('/api/v1/reports', require('./routes/reporting.routes'));
+  app.use('/api/v1/vendor-routing', require('./routes/vendorRouting.routes'));
   app.use('/metrics', require('./routes/metrics.routes'));
 
   console.log('✅ All API routes loaded successfully');

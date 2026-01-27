@@ -40,144 +40,33 @@ class OrderService {
     // ============================================
     // Operations in this transaction:
     // 1. Validate state transition (hard state machine)
-    // 2. Release stock (if cancelling) OR deduct stock (if delivering)
-    // 3. Update order status (enforced by state machine)
-    // 4. Log transition to AdminAuditLog
+    // 2. Update order status (enforced by state machine)
+    // 3. Write to order_events table (automatic via state machine)
+    // 4. Log transition to AdminAuditLog (automatic via state machine)
     //
     // ROLLBACK SCENARIOS:
-    // - If transition invalid → Transaction rolls back
-    // - If stock release/deduction fails → Order status update rolls back
-    // - Result: Order remains in original state, no inconsistency
+    // - If transition invalid → All updates rolled back
+    // - If any operation fails → Order remains in original state
+    // Result: Order either transitions fully or not at all (ATOMIC)
     // ============================================
 
-    return withTransaction(async (tx) => {
-      // STEP 1: Validate state transition (database-level validation)
-      const validation = await orderStateMachine.validateTransition(id, null, status, tx);
-      if (!validation.valid) {
-        throw new Error(validation.error);
-      }
-
-      // STEP 2: Handle stock operations based on status
-      if (status === 'CANCELLED') {
-        // Release reserved stock back to availability
-        const reservations = await tx.stockReservation.findMany({
-          where: { orderId: id, status: 'ACTIVE' }
-        });
-
-        for (const res of reservations) {
-          await tx.wholesalerProduct.update({
-            where: { id: res.wholesalerProductId },
-            data: { reservedStock: { decrement: res.quantity } }
-          });
-          await tx.stockReservation.update({
-            where: { id: res.id },
-            data: { status: 'RELEASED' }
-          });
-        }
-      } else if (status === 'DELIVERED') {
-        // Deduct stock from total (convert reservation to actual usage)
-        const reservations = await tx.stockReservation.findMany({
-          where: { orderId: id, status: 'ACTIVE' }
-        });
-
-        for (const res of reservations) {
-          await tx.wholesalerProduct.update({
-            where: { id: res.wholesalerProductId },
-            data: {
-              stock: { decrement: res.quantity },
-              reservedStock: { decrement: res.quantity }
-            }
-          });
-          await tx.stockReservation.update({
-            where: { id: res.id },
-            data: { status: 'FULFILLED' }
-          });
-        }
-      }
-
-      // STEP 3: Get current status for logging
-      const order = await tx.order.findUnique({
-        where: { id },
-        select: { id: true, status: true }
-      });
-
-      const fromStatus = order.status;
-
-      // STEP 4: Update order status (enforced by state machine)
-      const updateData = {
+    try {
+      // Use strict state machine with automatic event logging
+      const updatedOrder = await orderStateMachine.transitionOrderStatus(
+        id,
         status,
-        updatedAt: new Date()
-      };
-
-      // STEP 5.1: If Order is CONFIRMED, record in Ledger (Debit Retailer)
-      if (status === 'CONFIRMED' && order.wholesalerId) {
-        const ledgerService = require('./ledger.service');
-        await ledgerService.recordTransaction({
-          idempotencyKey: `ord-confirm-${id}`,
-          retailerId: order.retailerId,
-          wholesalerId: order.wholesalerId,
-          amount: order.totalAmount, // Assuming totalAmount is available on order object or fetched
-          type: 'DEBIT',
-          orderId: id,
-          description: `Order ${order.orderNumber || id} Confirmed`
-        });
-      }
-
-      // STEP 5.2: Generate OTP if moving to OUT_FOR_DELIVERY
-      let deliveryOTP = null;
-      if (status === 'OUT_FOR_DELIVERY') {
-        deliveryOTP = Math.floor(1000 + Math.random() * 9000).toString();
-        updateData.deliveryOTP = deliveryOTP;
-        updateData.otpVerified = false;
-      }
-
-      const updatedOrder = await tx.order.update({
-        where: { id },
-        data: updateData,
-        include: { retailer: true }
-      });
-
-      // Log transition (outside transaction if tx provided, to ensure it persists)
-      if (tx) {
-        // If in transaction, log after transaction commits
-        setImmediate(() => {
-          orderStateMachine.logTransition(id, fromStatus, status, performedBy, reason, null);
-        });
-      } else {
-        // Log immediately
-        await orderStateMachine.logTransition(id, fromStatus, status, performedBy, reason, null);
-      }
-
-      // If OTP was generated, send it to the retailer via WhatsApp
-      if (deliveryOTP && updatedOrder.retailer) {
-        const whatsappService = require('./whatsapp.service');
-        const otpMessage = `🔐 *Delivery OTP*
-    
-Your Order #${id.slice(-4)} is out for delivery! 🚚
-
-Please provide this OTP to the delivery person only after you receive the goods:
-*${deliveryOTP}*
-
-This ensures your delivery is recorded correctly.`;
-
-        // Use setImmediate to avoid blocking the transaction result
-        setImmediate(async () => {
-          try {
-            await whatsappService.sendMessage(updatedOrder.retailer.phoneNumber, otpMessage);
-            console.log(`📱 Delivery OTP sent to retailer for Order ${id.slice(-4)}`);
-          } catch (err) {
-            console.error('Failed to send OTP message:', err);
-          }
-        });
-      }
+        {
+          performedBy,
+          reason,
+          skipValidation: false // Always validate
+        }
+      );
 
       return updatedOrder;
-    }, {
-      operation: 'ORDER_STATUS_UPDATE',
-      entityId: id,
-      entityType: 'Order',
-      timeout: 10000
-    });
+    } catch (error) {
+      console.error(`Error updating order ${id} status (Transaction Rolled Back):`, error);
+      throw error;
+    }
   }
 
   async cancelOrder(id, userId) {
@@ -299,6 +188,240 @@ This ensures your delivery is recorded correctly.`;
       });
     } catch (error) {
       console.error(`Error creating order for retailer ${retailerId} (Transaction Rolled Back):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * ============================================================================
+   * CREDIT RESERVATION LIFECYCLE FUNCTIONS
+   * ============================================================================
+   */
+
+  /**
+   * Validate order and reserve credit
+   * Called before confirming an order
+   * 
+   * @param {string} orderId - Order ID
+   * @returns {Promise<Object>} { order, creditCheck, reserved }
+   */
+  async validateAndReserveCredit(orderId) {
+    const creditReservationService = require('./creditReservation.service');
+
+    try {
+      // 1. Get order details
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          orderNumber: true,
+          retailerId: true,
+          wholesalerId: true,
+          totalAmount: true,
+          status: true
+        }
+      });
+
+      if (!order) {
+        throw new Error(`ORDER_NOT_FOUND: ${orderId}`);
+      }
+
+      if (!order.wholesalerId) {
+        throw new Error(`WHOLESALER_NOT_ASSIGNED: Cannot reserve credit without wholesaler`);
+      }
+
+      // 2. Pre-check credit availability
+      const creditCheck = await creditReservationService.canReserveCredit(
+        order.retailerId,
+        order.wholesalerId,
+        order.totalAmount.toNumber()
+      );
+
+      if (!creditCheck.canReserve) {
+        throw new Error(`INSUFFICIENT_CREDIT: ${creditCheck.message}`);
+      }
+
+      // 3. Reserve credit
+      const reservation = await creditReservationService.reserveCredit(
+        order.retailerId,
+        order.wholesalerId,
+        orderId,
+        order.totalAmount.toNumber()
+      );
+
+      console.log(
+        `✅ Order ${orderNumber} validated and credit reserved: ₹${order.totalAmount}`
+      );
+
+      return {
+        order,
+        creditCheck,
+        reserved: reservation
+      };
+    } catch (error) {
+      console.error(`❌ Credit validation/reservation failed for order ${orderId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Release credit when order is cancelled
+   * 
+   * @param {string} orderId - Order ID
+   * @param {string} reason - Cancellation reason
+   * @returns {Promise<Object>} Released reservation
+   */
+  async cancelOrderAndReleaseCredit(orderId, reason = 'CANCELLED_BY_USER', userId = 'SYSTEM') {
+    const creditReservationService = require('./creditReservation.service');
+
+    try {
+      return await prisma.$transaction(async (tx) => {
+        // 1. Release all reserved stock
+        await stockService.releaseStock(orderId);
+
+        // 2. Update order to CANCELLED status
+        const updatedOrder = await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'CANCELLED',
+            updatedAt: new Date(),
+            failureReason: reason
+          }
+        });
+
+        // 3. Perform state machine transition for proper event logging
+        // (outside transaction - creditReservationService handles its own transaction)
+        // We do this after to ensure order is actually updated
+      });
+
+      // 4. Release credit reservation (this service handles its own transaction)
+      const released = await creditReservationService.releaseReservation(orderId, reason);
+
+      // 5. Log the transition
+      await orderStateMachine.logTransition(
+        orderId,
+        'VENDOR_ACCEPTED',
+        'CANCELLED',
+        userId,
+        reason
+      );
+
+      console.log(`✅ Order ${orderId} cancelled and credit released`);
+
+      return released;
+    } catch (error) {
+      console.error(`❌ Error cancelling order and releasing credit for ${orderId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark order as failed and release credit
+   * 
+   * @param {string} orderId - Order ID
+   * @param {string} reason - Failure reason
+   * @returns {Promise<Object>} Failed order with released credit
+   */
+  async markOrderFailedAndReleaseCredit(orderId, reason = 'ORDER_FAILED', userId = 'SYSTEM') {
+    const creditReservationService = require('./creditReservation.service');
+
+    try {
+      return await prisma.$transaction(async (tx) => {
+        // Update order status to FAILED
+        const updatedOrder = await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'FAILED',
+            failedAt: new Date(),
+            failureReason: reason,
+            updatedAt: new Date()
+          }
+        });
+
+        return updatedOrder;
+      });
+
+      // Release credit (outside transaction)
+      const released = await creditReservationService.releaseReservation(orderId, `FAILED: ${reason}`);
+
+      // Log transition
+      await orderStateMachine.logTransition(
+        orderId,
+        'VENDOR_ACCEPTED',
+        'FAILED',
+        userId,
+        reason
+      );
+
+      console.log(`✅ Order ${orderId} marked as failed and credit released`);
+
+      return released;
+    } catch (error) {
+      console.error(`❌ Error failing order and releasing credit for ${orderId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Fulfill order: Convert reserved credit to ledger DEBIT
+   * Called when order is delivered
+   * 
+   * @param {string} orderId - Order ID
+   * @param {Object} options - Fulfillment options (dueDate, etc.)
+   * @returns {Promise<Object>} { order, ledgerEntry, reservation }
+   */
+  async fulfillOrderAndConvertCredit(orderId, options = {}) {
+    const creditReservationService = require('./creditReservation.service');
+
+    try {
+      // 1. Get order details
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          orderNumber: true,
+          retailerId: true,
+          wholesalerId: true,
+          totalAmount: true,
+          status: true
+        }
+      });
+
+      if (!order) {
+        throw new Error(`ORDER_NOT_FOUND: ${orderId}`);
+      }
+
+      // 2. Mark as delivered
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'DELIVERED',
+          deliveredAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+
+      // 3. Convert credit reservation to ledger DEBIT
+      const creditConversion = await creditReservationService.convertReservationToDebit(
+        orderId,
+        order.retailerId,
+        order.wholesalerId,
+        order.totalAmount.toNumber(),
+        {
+          dueDate: options.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        }
+      );
+
+      console.log(
+        `✅ Order ${order.orderNumber} fulfilled and credit converted to DEBIT: ₹${order.totalAmount}`
+      );
+
+      return {
+        order: await this.getOrderById(orderId),
+        ...creditConversion
+      };
+    } catch (error) {
+      console.error(`❌ Error fulfilling order and converting credit for ${orderId}:`, error.message);
       throw error;
     }
   }

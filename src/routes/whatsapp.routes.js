@@ -2,7 +2,7 @@
  * WhatsApp Routes
  * 
  * Production-ready Twilio WhatsApp webhook integration
- * Security: Signature validation + Replay attack prevention + HTTPS enforcement + Deduplication
+ * Security: Signature validation + Replay attack prevention + HTTPS enforcement + Deduplication + Idempotency
  */
 
 const express = require('express');
@@ -12,6 +12,7 @@ const { webhookIPAllowlist } = require('../middleware/ipAllowlist.middleware');
 const { validateTwilioWebhook, replayProtectionMiddleware } = require('../middleware/twilio-webhook.middleware');
 const { httpsOnly } = require('../middleware/https-enforcer.middleware');
 const { deduplicationMiddleware } = require('../middleware/message-dedup.middleware');
+const { idempotencyMiddleware, cacheIdempotencyResponse } = require('../middleware/idempotency.middleware');
 const whatsappController = require('../controllers/whatsapp.controller');
 const logger = require('../utils/logger');
 
@@ -58,13 +59,15 @@ router.get('/webhook', httpsOnly, webhookRateLimiter, (req, res) => {
  * 
  * HTTPS ENFORCED: Twilio requires HTTPS endpoints
  * DEDUPLICATION: Prevents duplicate order processing using Twilio Message SID
+ * IDEMPOTENCY: Prevents duplicate operations using X-Idempotency-Key header
  * 
  * Middleware stack (in order):
  * 1. httpsOnly - Reject non-HTTPS requests (403)
  * 2. webhookRateLimiter - Prevent burst attacks (60 req/min)
  * 3. replayProtectionMiddleware - Detect replay attacks
  * 4. validateTwilioWebhook - Verify Twilio signature
- * 5. deduplicationMiddleware - Check for duplicate messages
+ * 5. idempotencyMiddleware - Check for duplicate requests (X-Idempotency-Key)
+ * 6. deduplicationMiddleware - Check for duplicate messages (MessageSid)
  * 
  * Twilio webhook format:
  * {
@@ -74,6 +77,11 @@ router.get('/webhook', httpsOnly, webhookRateLimiter, (req, res) => {
  *   "MessageSid": "SM...",
  *   "AccountSid": "AC...",
  *   "ProfileName": "User Name"
+ * }
+ * 
+ * Idempotency header:
+ * {
+ *   "X-Idempotency-Key": "550e8400-e29b-41d4-a716-446655440000"
  * }
  * 
  * IMPORTANT: Always return 200 OK immediately to Twilio
@@ -93,6 +101,11 @@ router.post(
   webhookRateLimiter,
   replayProtectionMiddleware(),
   validateTwilioWebhook(webhookUrl),
+  idempotencyMiddleware({
+    ttl_seconds: 86400, // 24 hours
+    header_name: 'x-idempotency-key',
+    enabled: true
+  }),
   // validate(whatsappWebhookSchema, 'body'), // FIXME: Twilio signature validates integrity. Strict strict schema might block valid Twilio updates if fields change.
   // We'll trust signature + basic shape for now or use schema with .unknown(true)
   deduplicationMiddleware(),
@@ -102,15 +115,31 @@ router.post(
     res.status(200).send('OK');
 
     // Process message asynchronously (don't await)
-    whatsappController.handleIncomingMessage(req, res).catch(error => {
+    try {
+      const response = await whatsappController.handleIncomingMessage(req, res);
+      
+      // Cache response for idempotency
+      await cacheIdempotencyResponse(req, res, 'whatsapp_message', {
+        success: true,
+        message: 'WhatsApp message processed',
+        processed_at: new Date().toISOString()
+      });
+    } catch (error) {
       logger.error('Error processing WhatsApp message', {
         error: error.message,
         stack: error.stack,
         from: req.body.From,
         body: req.body,
         requestId: req.requestId,
+        idempotency_key: req.idempotency?.key
       });
-    });
+
+      // Still cache the error for consistency
+      await cacheIdempotencyResponse(req, res, 'whatsapp_message', {
+        success: false,
+        error: error.message
+      });
+    }
   }
 );
 
@@ -125,6 +154,11 @@ router.get('/test', (req, res) => {
     twilio: {
       configured: !!process.env.TWILIO_ACCOUNT_SID,
       fromNumber: process.env.TWILIO_WHATSAPP_FROM || 'Not set'
+    },
+    idempotency: {
+      enabled: true,
+      header: 'X-Idempotency-Key',
+      ttl_hours: 24
     }
   });
 });
