@@ -20,6 +20,10 @@ RUN npx prisma generate
 # Final stage
 FROM node:18-alpine
 
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
 WORKDIR /app
 
 # Install production dependencies only
@@ -42,8 +46,14 @@ ENV PORT=5000
 EXPOSE 5000
 
 # Copy startup script
-COPY start.sh .
-RUN chmod +x start.sh
+# Copy entrypoint script
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chown nodejs:nodejs /app/docker-entrypoint.sh && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
 
 # Start command
-CMD ["./start.sh"]
+CMD ["/app/docker-entrypoint.sh"]
