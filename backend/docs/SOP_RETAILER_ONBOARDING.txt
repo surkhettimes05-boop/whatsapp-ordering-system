@@ -1,0 +1,255 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  RETAILER ONBOARDING SOP v1.0                            ║
+║                     For Field Operations Team                             ║
+║                    Print & Laminate for Field Use                        ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+OVERVIEW
+════════════════════════════════════════════════════════════════════════════
+Purpose: Enable retailers to place orders via WhatsApp
+Timeline: 5-10 minutes per retailer
+Owner: Field Operations Manager
+Success Rate Target: 95%+ first-time activation
+
+PREREQUISITES
+════════════════════════════════════════════════════════════════════════════
+□ Retailer has WhatsApp installed on business phone
+□ Phone number is active and verified
+□ Retailer speaks English or local language
+□ Valid business registration (ID required)
+□ Bank account details for payment settlement
+
+
+STEP 1: VERIFICATION & REGISTRATION
+════════════════════════════════════════════════════════════════════════════
+
+1.1 Collect Information
+    ├─ Business name
+    ├─ Owner/Manager name
+    ├─ Phone number (WhatsApp enabled)
+    ├─ Location/address
+    ├─ Business registration number
+    ├─ Bank account (IBAN/account number)
+    └─ Email (for invoices)
+
+1.2 Create Account in System
+    Step: Go to admin.system.com → Retailers → Add New
+    Enter:
+      ├─ Business Name: [use exact registration name]
+      ├─ Phone: +[country code][number]
+      ├─ Location: Full address
+      ├─ Bank Details: Save securely
+      └─ Status: PENDING_VERIFICATION
+    
+    ✓ Save and note RETAILER_ID (e.g., RTL-20260122-001)
+
+1.3 Verify Bank Details
+    Send test deposit: $0.01
+    Confirm receipt with retailer
+    ✓ Status: VERIFIED
+    
+    ⚠️ If test fails: Contact Finance team immediately
+       Do NOT proceed until bank account verified
+
+
+STEP 2: WHATSAPP ENROLLMENT
+════════════════════════════════════════════════════════════════════════════
+
+2.1 Add to WhatsApp Broadcast List
+    Action: Send WhatsApp to retailer
+    
+    Message Template:
+    ┌─────────────────────────────────────────────────────────┐
+    │ Hi [Name]! Welcome to [Platform Name].                  │
+    │                                                          │
+    │ Your Order ID: [RETAILER_ID]                           │
+    │ Phone: +[support_number]                                │
+    │                                                          │
+    │ To place your first order, reply:                       │
+    │ "START ORDERING"                                        │
+    │                                                          │
+    │ Or visit: [web link]                                    │
+    └─────────────────────────────────────────────────────────┘
+
+2.2 Confirm Receipt
+    ✓ Retailer replies with message
+    ✓ Log in system: Timestamp, confirmation
+    Status: WHATSAPP_ENROLLED
+
+
+STEP 3: CREDIT SETUP
+════════════════════════════════════════════════════════════════════════════
+
+3.1 Determine Credit Tier
+    
+    Volume Category | Daily Limit | Notes
+    ─────────────────────────────────────────────────────────
+    Micro          | $50         | New retailers (14 days)
+    Small          | $200        | Proven history (30+ days)
+    Medium         | $500        | Good payment record
+    Large          | $1,000+     | VIP/wholesale
+    
+    Decision factors:
+    ├─ Business size
+    ├─ Registration legitimacy
+    ├─ Bank verification success
+    └─ Recommended by existing retailer (if referral)
+
+3.2 Set Credit Parameters
+    In system → Retailer Settings → Credit:
+    
+    ├─ Daily Limit: [amount]
+    ├─ Payment Terms: [net_30/net_7/prepay]
+    ├─ Credit Buffer: 15% above daily limit
+    └─ Auto-topup: Enable/Disable
+    
+    Status: CREDIT_ACTIVE
+
+3.3 Send Welcome Email
+    Include:
+    ├─ Credit limit and terms
+    ├─ Payment instructions
+    ├─ FAQ document
+    ├─ Support contact number
+    └─ Link to training video
+
+
+STEP 4: FIRST ORDER WALKTHROUGH
+════════════════════════════════════════════════════════════════════════════
+
+4.1 Initial Training (Send via WhatsApp + Email)
+    
+    ┌─ ORDERING PROCESS ─────────────────────────────────┐
+    │ 1. Send product name to chat                        │
+    │    Example: "Tomatoes 5kg"                          │
+    │                                                      │
+    │ 2. Get price confirmation                           │
+    │    System: "5kg Tomatoes - $15"                     │
+    │                                                      │
+    │ 3. Confirm order                                    │
+    │    Send: "Confirm" or "Order"                       │
+    │                                                      │
+    │ 4. Receive order number                             │
+    │    System: "Order #ORD-20260122-001 confirmed"     │
+    │                                                      │
+    │ 5. Delivery within 24 hours                         │
+    │    You'll get delivery notification                 │
+    └────────────────────────────────────────────────────┘
+
+4.2 Assist First Order
+    ├─ Call/WhatsApp retailer
+    ├─ Guide through simple order
+    ├─ Confirm order goes through
+    ├─ Confirm delivery notification received
+    └─ Log all timestamps
+
+4.3 Verify Success
+    ✓ Order visible in system
+    ✓ Retailer received notification
+    ✓ No errors or issues
+    Status: FIRST_ORDER_COMPLETE
+
+
+STEP 5: COMPLETION & DOCUMENTATION
+════════════════════════════════════════════════════════════════════════════
+
+5.1 Onboarding Checklist
+    
+    Item                          | Status | Timestamp
+    ───────────────────────────────────────────────────
+    Account created               | ✓      | [time]
+    WhatsApp verified             | ✓      | [time]
+    Bank details confirmed        | ✓      | [time]
+    Credit tier assigned          | ✓      | [time]
+    First order completed         | ✓      | [time]
+    Welcome email sent            | ✓      | [time]
+
+5.2 Update Status
+    In system → Retailer [ID] → Status: ACTIVE
+    
+5.3 Send Completion Confirmation
+    Email to retailer with:
+    ├─ Account summary
+    ├─ Credit limit
+    ├─ Payment schedule
+    ├─ Support contact info
+    └─ Link to order history
+
+5.4 Schedule Follow-up
+    Day 3: Check in via WhatsApp
+    Day 7: Quality/satisfaction check
+    Day 30: Account review
+
+
+TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════════════
+
+PROBLEM: WhatsApp message not delivered
+→ SOLUTION:
+  1. Verify phone number is correct (including country code)
+  2. Ask retailer if WhatsApp is installed
+  3. Check if number is in contact list
+  4. Try calling, then retry WhatsApp
+  5. Escalate to tech team if still failing
+
+PROBLEM: Bank verification fails
+→ SOLUTION:
+  1. Verify account number is correct
+  2. Check bank details format (IBAN vs local)
+  3. Confirm account is active at bank
+  4. Contact Finance team
+  5. May need alternative payment method
+
+PROBLEM: Retailer can't place first order
+→ SOLUTION:
+  1. Check credit limit is set
+  2. Verify status is ACTIVE (not SUSPENDED)
+  3. Have retailer send exact product name
+  4. Walk through manually in real-time
+  5. Check system logs for error messages
+
+PROBLEM: Retailer not responding
+→ SOLUTION:
+  1. Wait 24 hours
+  2. Send follow-up message
+  3. Call phone number
+  4. Contact through referrer (if applicable)
+  5. Mark as inactive after 7 days without response
+
+
+QUICK REFERENCE - PHONE SCRIPT
+════════════════════════════════════════════════════════════════════════════
+
+Opening:
+"Hi [Name], this is [Your Name] from [Company]. I'm calling to set up your
+ ordering account so you can start receiving products via WhatsApp!"
+
+Verification:
+"I need to confirm a few details: your business name, phone number, and bank
+ account for payments. Is now a good time?"
+
+WhatsApp:
+"I'll send you a WhatsApp message right now. You'll get a welcome message
+ and can start ordering immediately!"
+
+Credit:
+"Your initial order limit is $[amount] per day. After 30 days of good
+ payment, we can increase this."
+
+Closing:
+"You're all set! You'll get your first message in the next 2 minutes.
+ Feel free to call me if you have any questions."
+
+
+KEY SUCCESS METRICS
+════════════════════════════════════════════════════════════════════════════
+□ Onboarding time: < 10 minutes
+□ First-time success rate: > 95%
+□ Account activation rate: > 90% within 7 days
+□ Average order value: > $20 (track daily)
+□ Payment default rate: < 2% (track monthly)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+LAST UPDATED: January 22, 2026 | VERSION: 1.0 | OWNER: Operations
+═══════════════════════════════════════════════════════════════════════════════

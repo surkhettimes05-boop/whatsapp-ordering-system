@@ -864,3 +864,74 @@ model RetailerInsight {
 	@@map("retailer_insights")
 }
 
+// ============================================================================
+// LAUNCH CONTROL SYSTEM MODELS
+// ============================================================================
+
+model LaunchControlSetting {
+	id          String   @id @default(cuid())
+	key         String   @unique
+	value       String
+	type        String   // 'boolean', 'integer', 'string'
+	description String?
+	category    String?  // 'limits', 'features', 'emergency', 'monitoring'
+	isActive    Boolean  @default(true)
+	createdBy   String   @default("system")
+	updatedBy   String?
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
+
+	@@index([key])
+	@@index([category])
+	@@index([isActive])
+	@@map("launch_control_settings")
+}
+
+model LaunchControlAudit {
+	id           String   @id @default(cuid())
+	key          String
+	oldValue     String?
+	newValue     String
+	changedBy    String
+	reason       String?
+	ipAddress    String?
+	userAgent    String?
+	timestamp    DateTime @default(now())
+
+	@@index([key])
+	@@index([changedBy])
+	@@index([timestamp])
+	@@map("launch_control_audit")
+}
+
+model SystemMetric {
+	id          String   @id @default(cuid())
+	metricName  String
+	metricValue Decimal
+	metricType  String   // 'counter', 'gauge', 'histogram'
+	tags        String?  // JSON
+	timestamp   DateTime @default(now())
+
+	@@index([metricName, timestamp])
+	@@map("system_metrics")
+}
+
+model LaunchControlAlert {
+	id              String    @id @default(cuid())
+	alertType       String
+	severity        String    // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+	title           String
+	message         String
+	details         String?   // JSON
+	status          String    @default("ACTIVE") // 'ACTIVE', 'ACKNOWLEDGED', 'RESOLVED'
+	acknowledgedBy  String?
+	acknowledgedAt  DateTime?
+	resolvedAt      DateTime?
+	createdAt       DateTime  @default(now())
+	updatedAt       DateTime  @updatedAt
+
+	@@index([alertType, status, createdAt])
+	@@index([severity])
+	@@index([status])
+	@@map("launch_control_alerts")
+}

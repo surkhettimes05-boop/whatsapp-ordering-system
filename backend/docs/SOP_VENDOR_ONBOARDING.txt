@@ -1,0 +1,423 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  VENDOR ONBOARDING SOP v1.0                              ║
+║                     For Field Operations Team                             ║
+║                    Print & Laminate for Field Use                        ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+OVERVIEW
+════════════════════════════════════════════════════════════════════════════
+Purpose: Enable vendors/suppliers to receive and fulfill orders
+Timeline: 15-20 minutes per vendor
+Owner: Supply Chain Manager
+Success Rate Target: 95%+ first fulfillment
+
+
+PREREQUISITES
+════════════════════════════════════════════════════════════════════════════
+□ Vendor has WhatsApp installed on business phone
+□ Phone number is active and verified
+□ Vendor speaks English or local language
+□ Valid business registration
+□ Bank account for payment settlement
+□ Warehouse/fulfillment location confirmed
+□ Delivery capability verified
+
+
+STEP 1: VERIFICATION & REGISTRATION
+════════════════════════════════════════════════════════════════════════════
+
+1.1 Collect Information
+    ├─ Business name (legal entity)
+    ├─ Owner/Manager name
+    ├─ Phone number (WhatsApp enabled)
+    ├─ Warehouse location/address
+    ├─ Business registration/tax ID
+    ├─ Bank account (IBAN/account number)
+    ├─ Email (for invoices)
+    ├─ Delivery coverage areas
+    └─ Product categories they supply
+
+1.2 Verify Vendor Legitimacy
+    Check:
+    ├─ Business registration is valid
+    ├─ Tax ID is active
+    ├─ No negative reputation/complaints
+    ├─ Sufficient stock levels (confirm with vendor)
+    └─ Warehouse is operational (visit if possible)
+    
+    ⚠️ Red flags requiring escalation:
+        • Unregistered business
+        • Previous fraud/chargeback history
+        • Warehouse not operational
+        • Stock levels too low (<20% of daily volume)
+
+1.3 Create Account in System
+    Step: Go to admin.system.com → Vendors → Add New
+    Enter:
+      ├─ Business Name
+      ├─ Phone: +[country code][number]
+      ├─ Warehouse Location: GPS coordinates + address
+      ├─ Categories: Select from list (can add more later)
+      ├─ Service Hours: [opening_time]-[closing_time]
+      ├─ Bank Details: Save securely
+      ├─ Coverage Areas: Define delivery zones
+      └─ Status: PENDING_VERIFICATION
+    
+    ✓ Save and note VENDOR_ID (e.g., VND-20260122-001)
+
+1.4 Verify Bank Details
+    Process:
+    ├─ Send test deposit: $0.01
+    ├─ Confirm receipt with vendor within 24 hours
+    ├─ Vendor must confirm amount received
+    ├─ Update status: VERIFIED
+    
+    ⚠️ If test fails:
+        → Contact Finance team
+        → Do NOT proceed until verified
+        → Offer alternative payment method if needed
+
+
+STEP 2: WHATSAPP & NOTIFICATION SETUP
+════════════════════════════════════════════════════════════════════════════
+
+2.1 Add to Vendor WhatsApp Group
+    Action: Add vendor number to WhatsApp group
+    
+    Group Name: [City/Region] Vendors
+    Purpose: Daily order broadcasts, announcements, support
+    
+    ✓ Confirm vendor received group notification
+
+2.2 Send Welcome Message
+    
+    Message Template:
+    ┌─────────────────────────────────────────────────────────┐
+    │ Welcome to [Platform Name], [Business Name]!           │
+    │                                                          │
+    │ Your Vendor ID: [VENDOR_ID]                            │
+    │ Service Phone: +[support_number]                        │
+    │                                                          │
+    │ You will receive:                                       │
+    │ ✓ Order notifications (automatic)                      │
+    │ ✓ 30 minutes to accept/reject                          │
+    │ ✓ Delivery instructions                                │
+    │ ✓ Payment upon completion                              │
+    │                                                          │
+    │ Read our Vendor Guide: [link]                          │
+    └─────────────────────────────────────────────────────────┘
+
+2.3 Confirm Setup
+    ✓ Vendor confirms WhatsApp setup
+    ✓ Vendor confirms phone number is monitored 24/7
+    Status: WHATSAPP_ENROLLED
+
+
+STEP 3: COMMISSIONS & PAYMENT SETUP
+════════════════════════════════════════════════════════════════════════════
+
+3.1 Define Commission Structure
+    
+    Volume Tier         | Commission % | Minimum Order
+    ─────────────────────────────────────────────────────
+    Starter             | 15%          | $10
+    Growth              | 12%          | $50/day
+    Premium             | 10%          | $200/day
+    Elite               | 8%           | $500/day
+    
+    Default: Starter (can upgrade after 30 days)
+
+3.2 Set Performance Requirements
+    
+    Requirement         | Threshold | Consequence
+    ────────────────────────────────────────────────────
+    Order accept rate   | > 85%     | Reduce visibility
+    On-time delivery    | > 95%     | Exclude from pool
+    Customer rating     | > 4.0/5   | Deactivate if < 3.5
+    Payment default     | 0%        | Immediate suspend
+    
+    ✓ Explain these clearly to vendor
+
+3.3 Configure Auto-Settlement
+    In system → Vendor [ID] → Payment Settings:
+    
+    ├─ Settlement frequency: Weekly/Bi-weekly/Monthly
+    ├─ Settlement day: [day]
+    ├─ Auto-payout: Enable/Disable
+    ├─ Commission applied: [selected percentage]
+    └─ Payment method: Bank transfer
+    
+    Status: PAYMENT_CONFIGURED
+
+3.4 Send Payment Documentation
+    Email to vendor:
+    ├─ Commission schedule
+    ├─ Payment terms (30-day net)
+    ├─ Fee structure (if any)
+    ├─ Tax obligations
+    └─ Settlement schedule
+
+
+STEP 4: SYSTEM TRAINING
+════════════════════════════════════════════════════════════════════════════
+
+4.1 Explain Order Flow
+    
+    ┌─ ORDER FULFILLMENT FLOW ───────────────────────────┐
+    │ 1. You receive order via WhatsApp                   │
+    │    Example: "Order #ORD-123 - 5kg Tomatoes"        │
+    │    Shows price & delivery time                      │
+    │                                                      │
+    │ 2. You have 30 MINUTES to respond                  │
+    │    Send: "Accept" or "Reject"                       │
+    │    (Or click button in app)                         │
+    │                                                      │
+    │ 3. If accepted, prepare order                       │
+    │    Pack items, keep receipt                         │
+    │    Be ready for pickup/delivery                     │
+    │                                                      │
+    │ 4. Driver arrives at scheduled time                 │
+    │    Confirm driver info                              │
+    │    Hand over package                                │
+    │                                                      │
+    │ 5. You get paid                                     │
+    │    Settlement every [period]                        │
+    │    Money in bank account                            │
+    └─────────────────────────────────────────────────────┘
+
+4.2 Show Rejection Reasons
+    Only reject if:
+    ├─ Item out of stock
+    ├─ Quality issue
+    ├─ Delivery area too far
+    ├─ Technical issue with order
+    └─ Cannot fulfill within time window
+    
+    ⚠️ High rejection rate = reduced order flow
+
+4.3 Explain Ratings System
+    Orders rated 1-5 stars by customers:
+    
+    5 stars ✓ - Perfect: Quality, freshness, packaging
+    1 star ✗ - Poor: Damaged, wrong item, late, cold
+    
+    ├─ Average rating affects visibility
+    ├─ Rating < 3.5 = account review
+    ├─ Rating < 3.0 = account suspension
+    
+    Action items:
+    ├─ Pack well (use ice packs if needed)
+    ├─ Respond quickly to messages
+    ├─ Keep items fresh
+    └─ Update status if delayed
+
+4.4 Point Out Critical Features
+    
+    Feature                | Location | Purpose
+    ───────────────────────────────────────────────
+    Accept/Reject button   | Chat     | Respond to orders
+    Order tracking         | App      | Monitor status
+    Payment history        | App      | View settlements
+    Messages               | Chat     | Support contact
+    Performance stats      | App      | View ratings/metrics
+
+
+STEP 5: FIRST ORDER WALKTHROUGH
+════════════════════════════════════════════════════════════════════════════
+
+5.1 Send Test Order
+    Action: Create test order from system
+    
+    Details:
+    ├─ Product: Popular item (tomatoes, milk, eggs)
+    ├─ Quantity: 1 unit (small order)
+    ├─ Delivery: Pick up if possible (faster)
+    ├─ Instructions: "TEST ORDER - Vendor training"
+    └─ Price: Discounted/free (don't charge)
+    
+    ✓ Order sent to vendor via WhatsApp
+
+5.2 Guide Vendor Through Response
+    Action: Call vendor during order
+    
+    Instructions:
+    "You just received an order. Look in WhatsApp.
+     See the order details?
+     Click 'Accept' button and send the message.
+     Or type 'Accept' in the chat.
+     Go ahead - I'll wait!"
+    
+    ✓ Confirm vendor sends acceptance message
+
+5.3 Verify End-to-End
+    Check:
+    ├─ Acceptance shows in system instantly
+    ├─ Status updates to "ACCEPTED"
+    ├─ Driver notification sent
+    ├─ Vendor can see tracking info
+    ├─ No error messages or delays
+    └─ All stakeholders notified
+
+5.4 Confirm Understanding
+    Ask vendor:
+    ✓ "Do you understand the accept/reject process?"
+    ✓ "What would you do if you were out of stock?"
+    ✓ "When should you contact us?"
+    ✓ "How is payment settled?"
+    
+    Make sure they can answer correctly
+
+
+STEP 6: POLICIES & COMPLIANCE
+════════════════════════════════════════════════════════════════════════════
+
+6.1 Present Operating Rules
+    
+    MANDATORY REQUIREMENTS:
+    ├─ Respond to all orders within 30 minutes
+    ├─ Accurate stock levels in system (daily update)
+    ├─ Honest product descriptions (weight, freshness)
+    ├─ Proper packaging/handling
+    ├─ On-time delivery (or communicate delay)
+    ├─ No side deals with customers (no direct numbers)
+    └─ Maintain hygiene standards
+    
+    Violations: Warning → Suspension → Termination
+
+6.2 Quality Standards
+    All products must have:
+    ├─ Correct weight/quantity
+    ├─ Proper freshness (check dates)
+    ├─ Clean, professional packaging
+    ├─ No damaged items
+    └─ Accurate temperature (if refrigerated)
+    
+    Random audits: Every 30 days
+
+6.3 Payment Terms
+    ├─ Commission deducted after delivery confirmed
+    ├─ You receive: Total price - commission %
+    ├─ Settlements: [frequency]
+    ├─ Dispute resolution: 7 days to file claim
+    ├─ Payment method: Bank transfer only
+    └─ Tax responsibility: On vendor (we issue 1099/equivalent)
+
+6.4 Termination Conditions
+    Account will be suspended if:
+    ├─ Average rating < 3.5 for 7 consecutive days
+    ├─ Accept rate < 70% (pattern of rejections)
+    ├─ Multiple customer complaints
+    ├─ Fraudulent activity detected
+    ├─ Payment defaults
+    └─ Violation of product standards
+    
+    30-day wind-down if terminated
+    Final payment: Final settlement + pending disputes
+
+
+STEP 7: COMPLETION & DOCUMENTATION
+════════════════════════════════════════════════════════════════════════════
+
+7.1 Completion Checklist
+    
+    Item                          | Status | Timestamp
+    ───────────────────────────────────────────────────
+    Account created               | ✓      | [time]
+    WhatsApp verified             | ✓      | [time]
+    Bank details confirmed        | ✓      | [time]
+    Commission tier assigned      | ✓      | [time]
+    Training completed            | ✓      | [time]
+    First order completed         | ✓      | [time]
+    Policies acknowledged         | ✓      | [time]
+
+7.2 Update Status
+    In system → Vendor [ID] → Status: ACTIVE
+    
+7.3 Send Confirmation Package
+    Email to vendor with:
+    ├─ Vendor ID
+    ├─ Commission rate
+    ├─ Payment schedule
+    ├─ Operational policies
+    ├─ Support contact info
+    ├─ Link to vendor dashboard
+    └─ Performance benchmarks
+
+7.4 Schedule Follow-ups
+    Day 1: Monitor first 5 orders
+    Day 3: Check average rating
+    Day 7: Satisfaction survey
+    Day 30: Full account review
+
+
+TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════════════
+
+PROBLEM: Vendor not responding to orders
+→ SOLUTION:
+  1. Check if vendor has WhatsApp notifications enabled
+  2. Verify vendor understands 30-minute deadline
+  3. Call vendor during order to confirm receipt
+  4. After 3 no-responses: Send formal warning
+  5. After 5 no-responses in 48 hours: Temporary deactivation
+
+PROBLEM: Orders rejected consistently
+→ SOLUTION:
+  1. Investigate reason for rejections
+  2. Check if stock levels are accurate
+  3. Assess if vendor has capacity issues
+  4. If > 30% rejection rate: Review with vendor
+  5. If > 50% rejection rate: Deactivate pending review
+
+PROBLEM: Vendor gives out phone number to customers
+→ SOLUTION:
+  1. Immediate warning (policy violation)
+  2. Second offense: Account suspension
+  3. Third offense: Account termination
+  4. Reason: Cuts off platform, avoids commission
+
+PROBLEM: Bank transfer fails
+→ SOLUTION:
+  1. Verify bank account details are correct
+  2. Check if account is active
+  3. Contact Finance team for manual transfer
+  4. Keep vendor updated on status
+  5. Do not pay from personal account
+
+
+QUICK REFERENCE - PHONE SCRIPT
+════════════════════════════════════════════════════════════════════════════
+
+Opening:
+"Hi [Name], this is [Your Name] from [Company]. I'm excited to partner
+ with your business to expand your sales!"
+
+Overview:
+"You'll receive orders on WhatsApp, have 30 minutes to accept or reject,
+ prepare the items, and our drivers will pick up for delivery."
+
+Commission:
+"Your commission is [%]%, which means you keep [%]% of the sale price.
+ You'll get paid every [period] to your bank account."
+
+First Order:
+"Let's do a test order right now so you can see exactly how it works.
+ I'll be on the phone with you the whole time."
+
+Closing:
+"You're all set! You should receive your first real order in 1-2 hours.
+ Call me anytime you have questions."
+
+
+KEY SUCCESS METRICS
+════════════════════════════════════════════════════════════════════════════
+□ Onboarding time: < 20 minutes
+□ First fulfillment success: > 95%
+□ Average order acceptance rate: > 85%
+□ Average customer rating: > 4.0/5 stars
+□ On-time delivery rate: > 95%
+
+
+═══════════════════════════════════════════════════════════════════════════════
+LAST UPDATED: January 22, 2026 | VERSION: 1.0 | OWNER: Supply Chain
+═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,270 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  DAILY OPERATIONS CHECKLIST v1.0                         ║
+║                        Print One Copy Per Day                            ║
+║                  Complete at Start, Mid-Day, End of Day                 ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+DATE: ________________    OPERATOR: ________________    LOCATION: __________
+
+═══════════════════════════════════════════════════════════════════════════════
+
+START OF DAY CHECKS (8:00 AM)
+════════════════════════════════════════════════════════════════════════════
+
+System Health
+┌─────────────────────────────────────────────────────────────────────────┐
+│ □ Website/app status: UP _____ DEGRADED _____ DOWN _____              │
+│ □ WhatsApp integration: ACTIVE _____ ISSUES _____                     │
+│ □ Database connection: OK _____ SLOW _____ FAILED _____               │
+│ □ Payment processor: ACTIVE _____ ISSUES _____                        │
+│ □ No critical alerts in system (check dashboard)                      │
+│                                                                         │
+│ If any issue: Call tech team immediately                              │
+│ Tech Support Number: ________________________                          │
+│                                                                         │
+│ Issue Description (if applicable):                                    │
+│ ___________________________________________________________________ │
+│                                                                         │
+│ Time Reported: ________________    Time Resolved: ________________    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Data Verification
+┌─────────────────────────────────────────────────────────────────────────┐
+│ □ No suspicious account creation overnight (check audit log)            │
+│ □ No chargeback alerts or payment failures                             │
+│ □ No orders marked as "stuck" or "error" in system                     │
+│ □ Vendor account status normal (check suspensions)                     │
+│ □ Retailer credit lines intact (no emergency resets)                   │
+│                                                                         │
+│ Issues Found: _____________________________________________________ │
+│                                                                         │
+│ Action Taken: _____________________________________________________ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Team Check-In
+┌─────────────────────────────────────────────────────────────────────────┐
+│ □ All team members accounted for                                        │
+│ □ No escalations from yesterday unresolved                              │
+│ □ Staff assignments for today confirmed                                │
+│ □ Field team phones charged and ready                                  │
+│ □ Support team email cleared of urgent messages                        │
+│                                                                         │
+│ Open Issues from Yesterday:                                            │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Who's handling: _________________________________________________  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Staffing
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Total Staff Present Today: _______  Absent: _______  On Leave: _____   │
+│                                                                         │
+│ Shift 1 (8am-2pm):  ________________                                   │
+│ Shift 2 (2pm-8pm):  ________________                                   │
+│ Shift 3 (8pm-8am):  ________________                                   │
+│                                                                         │
+│ Any coverage gaps? ☐ Yes ☐ No                                          │
+│ If yes, mitigation plan: __________________________________________ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Start Time Signature: ________________________  Time: ________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MID-DAY CHECK (12:00 PM)
+════════════════════════════════════════════════════════════════════════════
+
+Operational Metrics
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Orders Processed (since 8am): ________________                         │
+│ Average Order Value: $ ________________                                │
+│ Successful Deliveries: ________________                               │
+│ Failed/Delayed Deliveries: ________________                           │
+│ Customer Complaints Received: ________________                         │
+│                                                                         │
+│ Target: > 100 orders, < 5% failure rate                               │
+│ Status: ☐ ON TRACK  ☐ BEHIND  ☐ ALERT                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+System Performance
+┌─────────────────────────────────────────────────────────────────────────┐
+│ □ No system downtime since morning start                                │
+│ □ Average response time < 2 seconds (check dashboard)                  │
+│ □ WhatsApp message delivery: > 95% success rate                        │
+│ □ Database queries responding normally                                 │
+│ □ Server memory usage: < 80% (check monitoring)                        │
+│                                                                         │
+│ Performance Issues: __________________________________________________ │
+│                                                                         │
+│ Escalation needed: ☐ Yes ☐ No                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Credit & Payment Status
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Retailer Credit Used Today: $ ________________                         │
+│ Total Available Credit (all retailers): $ ________________              │
+│ Payment Failures: ________________ (count)                             │
+│ Chargebacks Filed: ________________ (count)                            │
+│                                                                         │
+│ Credit Issues: _____________________________________________________ │
+│                                                                         │
+│ Action Required: ☐ Yes ☐ No                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Team Status
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Any staff issues or conflicts: ☐ Yes ☐ No                              │
+│ If yes, details: ___________________________________________________  │
+│                                                                         │
+│ Any training needs identified: ☐ Yes ☐ No                             │
+│ If yes, details: ___________________________________________________ │
+│                                                                         │
+│ Morale check: ☐ Good ☐ Neutral ☐ Concerning                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Mid-Day Check Signature: ________________________  Time: ________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+END OF DAY SUMMARY (6:00 PM)
+════════════════════════════════════════════════════════════════════════════
+
+Daily Metrics (Full Day)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Total Orders: ________________                                          │
+│ Successful Deliveries: ________________ (%)                           │
+│ Failed Orders: ________________ (%)                                   │
+│ Average Rating: ________________ / 5.0 stars                          │
+│                                                                         │
+│ Revenue (est.): $ ________________                                     │
+│ Refunds Issued: $ ________________                                     │
+│ Net: $ ________________                                                │
+│                                                                         │
+│ Retailer Churn (new vs lost): +_____ / -_____                          │
+│ Vendor Performance (avg rating): ________________                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Incident Summary
+┌─────────────────────────────────────────────────────────────────────────┐
+│ System Outages: ☐ None ☐ Yes (duration: ___________)                  │
+│ Major Complaints: ☐ None ☐ Yes (count: ___________)                   │
+│ Data Issues: ☐ None ☐ Yes (details: _____________________________)  │
+│ Security Issues: ☐ None ☐ Yes (details: ___________________________) │
+│ Payment Problems: ☐ None ☐ Yes (details: ___________________________) │
+│                                                                         │
+│ Incidents Requiring Follow-up:                                         │
+│ _____________________________________________________________________ │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Owner for Follow-up: ___________________________________________  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Database Verification
+┌─────────────────────────────────────────────────────────────────────────┐
+│ □ Backup completed successfully (check log)                            │
+│ □ No corrupted records found                                           │
+│ □ Query performance acceptable                                         │
+│ □ Disk space adequate (> 20% free)                                     │
+│ □ All tables intact (run integrity check)                              │
+│                                                                         │
+│ Action Items: _____________________________________________________ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Team Debrief
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Successes Today:                                                        │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Challenges/Issues:                                                     │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Lessons Learned:                                                       │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Improvements for Tomorrow:                                             │
+│ _____________________________________________________________________ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Tomorrow's Plan
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Planned Activities:                                                     │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Known Issues to Monitor:                                               │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Staff Assignments:                                                     │
+│ _____________________________________________________________________ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+End of Day Sign-Off
+┌─────────────────────────────────────────────────────────────────────────┐
+│ All end-of-day tasks complete: ☐ Yes ☐ No                             │
+│                                                                         │
+│ System Status (final check): ☐ Normal ☐ Issues Present                │
+│                                                                         │
+│ Issues Escalated to Night Shift: ___________________________          │
+│                                                                         │
+│ Next Day Prepared: ☐ Yes ☐ No                                          │
+│                                                                         │
+│ Signed: ________________________  Time: ________________  Date: _____ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+QUICK REFERENCE METRICS
+════════════════════════════════════════════════════════════════════════════
+
+TARGETS TO MAINTAIN
+├─ Orders processed: > 100/day
+├─ Success rate: > 95%
+├─ Average order value: > $20
+├─ Customer rating: > 4.5/5
+├─ Vendor rating: > 4.0/5
+├─ Payment success: > 99%
+├─ System uptime: > 99.5%
+├─ Support response time: < 30 min
+└─ Retailer retention: > 90%
+
+ESCALATION TRIGGERS (Notify Manager Immediately)
+├─ System downtime: > 30 minutes
+├─ Orders failing: > 5% in any 1-hour window
+├─ Payment failures: > 10 in one day
+├─ Customer complaints: > 5 in one day
+├─ Vendor rejections: > 50% acceptance rate
+├─ Security incident detected
+├─ Data integrity issue discovered
+└─ Revenue impact: > $5,000
+
+CONTACT INFORMATION
+├─ Tech Support: ________________________
+├─ Finance Manager: ________________________
+├─ Supply Chain: ________________________
+├─ Customer Support Lead: ________________________
+├─ Emergency Line: ________________________
+└─ CEO: ________________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTES & OBSERVATIONS
+════════════════════════════════════════════════════════════════════════════════
+
+Use this space for daily notes, patterns, or observations:
+
+___________________________________________________________________
+
+___________________________________________________________________
+
+___________________________________________________________________
+
+___________________________________________________________________
+
+═══════════════════════════════════════════════════════════════════════════════
+
+STORE THIS LOG FOR COMPLIANCE AND AUDIT PURPOSES
+RETAIN FOR 12 MONTHS MINIMUM
+Last Updated: January 22, 2026 | VERSION: 1.0
+═══════════════════════════════════════════════════════════════════════════════

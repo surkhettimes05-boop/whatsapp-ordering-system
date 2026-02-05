@@ -1,0 +1,518 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║              MANUAL OVERRIDE PROCESS FOR FAILED ORDERS v1.0              ║
+║                     Manager-Level Authorization Required                 ║
+║          Only Use When System Cannot Automatically Resolve Issue          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+WHEN TO USE MANUAL OVERRIDE
+════════════════════════════════════════════════════════════════════════════
+
+✓ USE MANUAL OVERRIDE WHEN:
+├─ Order stuck in processing for > 10 minutes despite multiple retries
+├─ System cannot find available vendor despite multiple attempts
+├─ Payment failed but retailer has confirmed credit is available
+├─ Order shows "error" state but no automatic recovery path exists
+├─ Vendor rejected order without explanation and retailer needs urgent delivery
+├─ System timeout on order creation but retailer says they never placed order
+├─ Queue processor crashed and orders are backed up
+└─ Only as LAST RESORT after all automatic systems have been exhausted
+
+✗ DO NOT USE MANUAL OVERRIDE FOR:
+├─ Discounting orders to make customers happy (use resolution process instead)
+├─ Bypassing vendor availability rules
+├─ Canceling orders without customer consent
+├─ Hiding system errors or failures
+├─ Overriding retailer credit limits without credit adjustment
+├─ Creating fake transactions for testing
+├─ Removing audit trail or evidence
+└─ Any non-emergency business decision
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PRE-OVERRIDE VERIFICATION CHECKLIST
+════════════════════════════════════════════════════════════════════════════
+
+REQUIRED STEPS (All must be completed before override)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ □ Confirmed order details:                                              │
+│   - Order ID: ________________________                                   │
+│   - Retailer: ________________________                                   │
+│   - Items: ________________________________________________              │
+│   - Amount: $ ________________                                          │
+│   - Vendor originally assigned: ________________________                │
+│                                                                         │
+│ □ Confirmed order is legitimately stuck (not user error):               │
+│   - Checked order status in system: [status] ________________           │
+│   - Checked retailer didn't manually cancel: Yes / No                   │
+│   - Checked customer actually placed order: Yes / No                    │
+│   - Time stuck: ________________ (exceed 10 min threshold?)            │
+│                                                                         │
+│ □ Verified automatic recovery attempts FAILED:                          │
+│   - Attempted retry in system: ☐ Yes ☐ Failed ☐ Didn't help           │
+│   - Attempted queue re-push: ☐ Yes ☐ Failed ☐ Didn't help             │
+│   - Attempted vendor reassignment: ☐ Yes ☐ Failed ☐ No alternate      │
+│   - Attempted payment retry: ☐ Yes ☐ Failed ☐ N/A                     │
+│   - Waited for system recovery: ☐ Yes ☐ No improvement                │
+│                                                                         │
+│ □ Confirmed retailer/customer impact:                                  │
+│   - Customer waiting: Yes / No / Unknown                                │
+│   - Customer contacted: Yes / No                                        │
+│   - Amount at risk: $ ________________                                  │
+│   - Time-sensitive (perishable food?): Yes / No                         │
+│                                                                         │
+│ □ Confirmed no system fraud or abuse:                                  │
+│   - Retailer account flagged for fraud: Yes / No                        │
+│   - Multiple overrides for same retailer today: _____ (count)           │
+│   - Pattern of system failures vs legitimate issue: One-time / Pattern  │
+│   - Security team flagged this order: Yes / No                          │
+│                                                                         │
+│ All items above checked: ☐ YES - Continue to Override | ☐ NO - STOP    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+AUTHORIZATION REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════
+
+AUTHORITY LEVELS:
+
+Level 1: Senior Support Staff (< $500 orders)
+├─ Can approve: Retry-type overrides only
+├─ Cannot approve: Customer compensation > 50%, Creative solutions
+├─ Must notify: Manager within 2 hours
+├─ Example: Retrying payment or re-pushing stuck order
+
+Level 2: Team Manager ($500 - $2,000 orders)
+├─ Can approve: Most operational overrides
+├─ Cannot approve: Financial adjustments > 50%, Vendor punishment
+├─ Must notify: Operations Director within 2 hours
+├─ Example: Reassigning vendor, partial compensation
+
+Level 3: Operations Director (> $2,000 orders OR pattern issues)
+├─ Can approve: Any override within policy
+├─ Cannot approve: Anything violating legal/compliance
+├─ Must notify: CEO for critical issues
+├─ Must document: Full rationale in audit log
+├─ Example: Full refund, significant compensation, vendor issues
+
+═════════════════════════════════════════════════════════════════════════
+
+GETTING APPROVAL:
+
+Step 1: Prepare Override Request
+        ☐ Document what happened
+        ☐ Document what was tried
+        ☐ Explain why override is needed
+        ☐ Propose specific solution
+        ☐ Estimate financial impact
+
+Step 2: Escalate to Appropriate Level
+        ☐ Small issue (< $500): Notify your manager
+        ☐ Medium issue ($500-$2,000): Get manager approval
+        ☐ Large issue (> $2,000): Get director approval
+        ☐ Security concern: Notify security team immediately
+
+Step 3: Wait for Approval
+        ☐ DO NOT proceed without explicit approval
+        ☐ Wait time: Usually < 30 seconds (quick call/Slack)
+        ☐ If manager unavailable, escalate to director
+        ☐ If director unavailable, escalate to CEO
+
+Step 4: Document Approval
+        ☐ Record: Who approved, when, what they said
+        ☐ Approved by: ________________________
+        ☐ Approval time: ________________  Date: ________________
+        ☐ Verbal approval: ☐ Yes ☐ Email confirmation received
+
+
+═══════════════════════════════════════════════════════════════════════════════
+OVERRIDE TYPE 1: RE-RETRY FAILED PAYMENT
+════════════════════════════════════════════════════════════════════════════
+
+Purpose: Re-attempt payment charge to retailer when system had temporary outage
+
+When to Use:
+├─ Payment initially failed due to timeout, not actual decline
+├─ Retailer has confirmed payment method is valid
+├─ No duplicate charges will occur (verified in payment logs)
+└─ Customer is aware retry will happen
+
+Risk Level: LOW ⚠️
+
+Step 1: Get Approval
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Confirm with manager: "Retry payment on order [ID]? Amount: $___"   │
+│ ☐ Reason: Temporary payment processor outage                          │
+│ ☐ Manager approval: ☐ Yes ☐ No                                        │
+│                                                                         │
+│ IF NO: Do NOT proceed. Return to customer support workflow            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 2: Verify No Duplicate Charge
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Check payment logs: grep "[OrderID]" /var/log/payments.log           │
+│ ☐ Result: Only 1 charge attempt visible (not 2)                       │
+│ ☐ Check retailer's bank: Verify charge doesn't show twice             │
+│ ☐ Status: ☐ Safe to retry | ☐ STOP - duplicate exists                │
+│                                                                         │
+│ If duplicate found: Contact payment processor immediately              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 3: Execute Retry
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Method A (Preferred - via Admin Panel):                                │
+│ ├─ Go to: Admin Dashboard                                              │
+│ ├─ Find: Orders → [OrderID]                                            │
+│ ├─ Click: "Retry Payment"                                              │
+│ ├─ Confirm: "Charge $[amount] to [retailer]?"                          │
+│ ├─ Status: Processing...                                               │
+│ └─ Result: ☐ Success | ☐ Failed [reason]                              │
+│                                                                         │
+│ Method B (CLI - if admin panel down):                                  │
+│ ├─ SSH to server                                                       │
+│ ├─ Command: ./bin/retry-payment.sh [OrderID]                           │
+│ ├─ Output: Charge [Amount]: [Processing/Success/Failed]               │
+│ └─ Result: ☐ Success | ☐ Failed [reason]                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 4: Verify Success
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Check order status changed to "Payment Confirmed"                    │
+│ ☐ Check retailer balance updated (reduced by charge)                   │
+│ ☐ Check order now moving to vendor queue                               │
+│ ☐ Check retailer received confirmation WhatsApp message                │
+│                                                                         │
+│ Status: ☐ Successful (order now processing) | ☐ FAILED (see Step 5)   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 5: If Retry Failed
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ DO NOT try retry again - escalate instead                            │
+│ ☐ Contact manager: "Payment retry failed. Error: [details]"            │
+│ ☐ Next action: Move to customer resolution workflow                    │
+│ ☐ Offer retailer: Refund or credit back to account                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 6: Document Override
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Incident #: ________________________                                    │
+│ Date/Time: ________________________  Duration: ____________ min        │
+│ Approved By: ________________________  Title: _________________        │
+│ Reason: Payment retry due to processor timeout                         │
+│ Result: ☐ Success | ☐ Escalated to: ________________________          │
+│ Notes: ___________________________________________________________________  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+OVERRIDE TYPE 2: REASSIGN TO ALTERNATE VENDOR
+════════════════════════════════════════════════════════════════════════════════
+
+Purpose: Move stuck order to different vendor when original can't fulfill
+
+When to Use:
+├─ Original vendor not responding after 15+ minutes
+├─ Original vendor rejected order without valid reason
+├─ Original vendor account suspended or offline
+├─ Retailer has requested different vendor
+└─ Alternative vendor available and willing
+
+Risk Level: MEDIUM ⚠️⚠️
+
+RISKS:
+├─ Order may get sent to original vendor AND new vendor (duplication)
+├─ Different vendor may have different pricing/quality
+├─ Retailer may not prefer alternate vendor
+├─ May delay order further (if new vendor also slow)
+└─ Original vendor may complain about order reassignment
+
+Step 1: Get Approval
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Confirm with manager:                                                │
+│   "Reassign order [ID] from [Vendor1] to [Vendor2]?                    │
+│    Reason: [Original not responding / Requested / Account suspended]"  │
+│                                                                         │
+│ ☐ Manager should verify:                                               │
+│   - New vendor can fulfill order                                       │
+│   - New vendor is online and accepting orders                          │
+│   - New vendor has good rating (> 4.0)                                 │
+│                                                                         │
+│ ☐ Manager approval: ☐ Yes ☐ No                                         │
+│ IF NO: Do NOT proceed                                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 2: Contact Original Vendor
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Via WhatsApp: "Hi [Vendor], we have an order but are reassigning     │
+│   to another vendor as we need urgent fulfillment. Please do not       │
+│   prepare this order."                                                  │
+│                                                                         │
+│ ☐ Give vendor 1 minute to respond                                      │
+│ ☐ Vendor response: ________________________                             │
+│ ☐ Vendor understood: ☐ Yes ☐ No / No response                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 3: Cancel Original Assignment
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Go to Admin Panel                                                     │
+│ ☐ Find order in queue                                                  │
+│ ☐ Status should still be: "Assigned to [Vendor1]"                     │
+│ ☐ Click: "Cancel Vendor Assignment"                                    │
+│ ☐ Confirm: "Remove [Vendor1] from order?"                             │
+│ ☐ Result: Order moves back to "Unassigned"                            │
+│                                                                         │
+│ Verify:  ☐ Order status is "Unassigned"                               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 4: Assign to New Vendor
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Click: "Assign Vendor"                                               │
+│ ☐ Search for: [Vendor2 name]                                           │
+│ ☐ Verify new vendor:                                                   │
+│   - Is online: ☐ Yes                                                    │
+│   - Rating: ______ (should be > 4.0)                                   │
+│   - Currently accepting orders: ☐ Yes                                  │
+│   - Can prepare items: ☐ Yes                                           │
+│                                                                         │
+│ ☐ Click: "Assign [Vendor2]"                                            │
+│ ☐ Confirm: "Send order to [Vendor2]?"                                 │
+│ ☐ Status: Order reassigned                                            │
+│                                                                         │
+│ Verify: Order shows "Assigned to [Vendor2]"                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 5: Notify Retailer (IMPORTANT)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Send WhatsApp: "Your order has been reassigned to [Vendor2].        │
+│   Vendor2 is currently available and will prepare your order.         │
+│   Expected delivery: [new time]"                                       │
+│                                                                         │
+│ ☐ Ask retailer: "Is this acceptable?"                                  │
+│ ☐ Retailer response: ☐ Agreed ☐ Not happy ☐ No response               │
+│                                                                         │
+│ If retailer not happy: ☐ Offer compensation (5-10% credit)            │
+│                        ☐ Ask manager for guidance                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 6: Monitor New Vendor
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Set timer for 2 minutes                                              │
+│ ☐ Check if new vendor accepted order                                   │
+│ ☐ If accepted: Monitor completion time                                 │
+│ ☐ If rejected: Mark as failed, escalate immediately                   │
+│                                                                         │
+│ Outcome: ☐ Accepted | ☐ Rejected | ☐ No response after 5 min          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 7: Document Override
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Incident #: ________________________                                    │
+│ Date/Time: ________________________  Duration: ____________ min        │
+│ Original Vendor: ________________________ (Reason for removal: ______)  │
+│ New Vendor: ________________________ (Why selected: ____________)     │
+│ Approved By: ________________________  Title: _________________        │
+│ Retailer notified: ☐ Yes ☐ No                                         │
+│ Retailer satisfaction: ☐ Happy | ☐ Neutral | ☐ Unhappy               │
+│ Result: ☐ Order fulfilled | ☐ Still failing                           │
+│ Notes: ___________________________________________________________________  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+OVERRIDE TYPE 3: MANUAL COMPENSATION/REFUND
+════════════════════════════════════════════════════════════════════════════════
+
+Purpose: Provide customer refund/credit for failed order or poor experience
+
+When to Use:
+├─ Order never delivered after 90+ minutes wait
+├─ Wrong items delivered (retailer/vendor error)
+├─ Items arrived damaged or cold
+├─ Exceptional service failure causing customer harm
+└─ As last resort to prevent negative reviews/churn
+
+Risk Level: HIGH ⚠️⚠️⚠️
+
+RISKS:
+├─ Abuse: Customers may claim false issues to get free orders
+├─ Precedent: Other customers may request similar treatment
+├─ Vendor frustration: Vendors may claim unfair refunds
+├─ Revenue impact: Reduces revenue, affects metrics
+├─ Audit trail: Must be fully documented
+└─ Fraud: Could be exploited by internal staff
+
+LIMITS:
+├─ Cannot exceed 50% of order value without Director approval
+├─ Cannot exceed $500 without CEO notification
+├─ Cannot issue more than 3 refunds per retailer per week
+├─ Must document reason thoroughly
+└─ All refunds auto-escalated to Finance for audit
+
+Step 1: Verify Legitimacy
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Retailer NOT trying to commit fraud:                                 │
+│   - Account not flagged for repeated false claims                      │
+│   - Not first time retailer "lost" order                               │
+│   - Story is consistent and verifiable                                 │
+│                                                                         │
+│ ☐ Legitimacy check: ☐ GENUINE | ☐ SUSPICIOUS | ☐ LIKELY FRAUD        │
+│                                                                         │
+│ If suspicious/fraud: Contact manager + security immediately           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 2: Calculate Appropriate Compensation
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Original Order Amount: $ ________________                              │
+│ Issue Severity: ☐ Minor | ☐ Moderate | ☐ Severe                      │
+│                                                                         │
+│ Compensation Matrix:                                                   │
+│ ├─ 10-15 min late:      10% refund                                    │
+│ ├─ 15-30 min late:      15% refund                                    │
+│ ├─ 30-60 min late:      25% refund                                    │
+│ ├─ 60+ min late:        50% refund or full refund                     │
+│ ├─ Wrong items:         $ refund = cost of wrong items                │
+│ ├─ Poor quality:        25% refund                                    │
+│ ├─ Never arrived:       100% full refund                              │
+│ └─ Multiple issues:     Up to 100% refund                             │
+│                                                                         │
+│ Recommended Compensation: $ ________________ (___% of order)          │
+│                                                                         │
+│ Exceeds 50%? ☐ Yes - Need Director approval | ☐ No - Proceed         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 3: Get Approval
+┌─────────────────────────────────────────────────────────────────────────┐
+│ For refunds < $100 (50% of order):                                     │
+│ ☐ Manager approval required                                           │
+│ ☐ Manager: ________________________                                     │
+│ ☐ Approval: ☐ Yes ☐ No                                                │
+│                                                                         │
+│ For refunds $100-$500:                                                 │
+│ ☐ Director approval required                                          │
+│ ☐ Director: ________________________                                    │
+│ ☐ Approval: ☐ Yes ☐ No                                                │
+│                                                                         │
+│ For refunds > $500:                                                    │
+│ ☐ CEO notification required                                           │
+│ ☐ CEO: ________________________                                         │
+│ ☐ Notification sent: ☐ Yes                                             │
+│                                                                         │
+│ If approval denied: Do NOT proceed - escalate customer request         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 4: Process Refund
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Method A (Partial Refund - Credit Back to Retailer):                   │
+│ ├─ Go to Admin Panel → Retailer Account                               │
+│ ├─ Click: "Add Credit Balance"                                         │
+│ ├─ Amount: $ ________________                                          │
+│ ├─ Reason: [Auto-filled from Override system]                          │
+│ ├─ Confirm: "Add $ _____ credit for order [ID]?"                      │
+│ └─ Status: Credit applied                                             │
+│                                                                         │
+│ Method B (Full Refund - Return to Payment Method):                     │
+│ ├─ Go to Admin Panel → Transactions                                   │
+│ ├─ Find original transaction for order [ID]                           │
+│ ├─ Click: "Issue Refund"                                              │
+│ ├─ Amount: $ ________________ (or full amount)                         │
+│ ├─ Reason: [Auto-filled from Override system]                          │
+│ ├─ Confirm: "Refund $ _____ to payment method?"                       │
+│ └─ Status: Refund processing (1-3 business days to appear)            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 5: Notify Retailer
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Send WhatsApp: "We sincerely apologize for the issue with order     │
+│   [ID]. We have issued a [PARTIAL/FULL] REFUND of $ _____ to your    │
+│   account [method]. This reflects our commitment to your satisfaction." │
+│                                                                         │
+│ ☐ Ask: "We want to make this right. Is there anything else you need?" │
+│ ☐ Follow-up offer: Free delivery on next order (optional)             │
+│                                                                         │
+│ ☐ Retailer response: ________________________                           │
+│ ☐ Retailer satisfied: ☐ Yes ☐ Neutral ☐ No                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 6: Investigation (Later)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Root cause: Was this vendor, retailer, or system fault?             │
+│ ☐ Can it be prevented? ☐ Yes - How: ________________________            │
+│ ☐ Vendor at fault? ☐ Yes - Action: ________________________            │
+│ ☐ Document incident for pattern analysis                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Step 7: Document Override
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Incident #: ________________________                                    │
+│ Date/Time: ________________________  Duration: ____________ min        │
+│ Order Amount: $ ________________                                       │
+│ Refund Amount: $ ________________ (___% of order)                     │
+│ Refund Method: ☐ Credit | ☐ Payment method refund                     │
+│ Issue: ___________________________________________________________________  │
+│ Approved By: ________________________  Title: _________________        │
+│ Reviewed by Finance: ☐ Yes [Name: ________________]                   │
+│ Result: ☐ Resolved | ☐ Escalated                                      │
+│ Notes: ___________________________________________________________________  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+CRITICAL RULES FOR ALL OVERRIDES
+════════════════════════════════════════════════════════════════════════════
+
+1. NEVER override without documented approval from appropriate authority
+2. NEVER bypass the verification checklist - complete all items
+3. NEVER attempt override alone - always notify manager first
+4. NEVER hide or delete evidence of the override
+5. NEVER modify override records after creation
+6. NEVER process refund without written approval
+7. NEVER override the same issue twice - escalate instead
+8. NEVER override without customer/retailer notification
+9. NEVER use override to hide system bugs or failures
+10. NEVER override customer disputes without payment team review
+
+
+═══════════════════════════════════════════════════════════════════════════════
+OVERRIDE AUDIT TRAIL
+════════════════════════════════════════════════════════════════════════════════
+
+SYSTEM TRACKS AUTOMATICALLY:
+├─ When override was executed (timestamp)
+├─ Who executed override (staff member)
+├─ What type of override (retry/reassign/refund)
+├─ What was changed in system
+├─ Who approved it
+├─ Financial impact ($ amount)
+├─ Customer/retailer affected
+└─ All before/after system states
+
+REGULAR AUDIT SCHEDULE:
+├─ Daily: All overrides reviewed by Manager
+├─ Weekly: Summary report to Operations Director
+├─ Monthly: Pattern analysis for abuse detection
+├─ Quarterly: Full audit with Finance team
+└─ Annually: Compliance review for external auditors
+
+If overrides exceed threshold, system flags automatically:
+├─ Same retailer > 5 overrides/week → Investigation
+├─ Total $ > $5,000/month → Director review
+├─ Same staff member > 10 overrides/week → Performance review
+└─ Fraud pattern detected → Security team involved
+
+
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT FOR QUESTIONS
+════════════════════════════════════════════════════════════════════════════════
+
+Manager (Day Shift): ________________________  Phone: ________________
+Manager (Night Shift): ________________________  Phone: ________________
+Operations Director: ________________________  Phone: ________________
+Finance Manager: ________________________  Phone: ________________
+Security Team: ________________________  Phone: ________________
+Emergency Line: ________________________  Phone: ________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Last Updated: January 22, 2026 | VERSION: 1.0
+═══════════════════════════════════════════════════════════════════════════════

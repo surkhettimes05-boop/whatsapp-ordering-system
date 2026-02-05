@@ -1,0 +1,524 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║           OPERATIONAL SOPs COMPLETE PACKAGE v1.0                         ║
+║         Field-Ready Procedures for WhatsApp Ordering System              ║
+║              Printable & Laminate-Friendly Format                        ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+WHAT'S IN THIS PACKAGE
+════════════════════════════════════════════════════════════════════════════════
+
+This comprehensive operational documentation package includes 6 complete Standard
+Operating Procedures (SOPs) designed for field staff and support teams.
+
+All documents are:
+✓ Printable on standard 8.5" x 11" paper
+✓ Laminate-friendly (plaintext, ASCII formatting)
+✓ Field-ready (practical steps, no jargon)
+✓ Compliance-ready (audit trails, decision documentation)
+✓ Easy to train on (step-by-step checklists)
+✓ Built for consistency (standardized procedures)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SOP INVENTORY
+════════════════════════════════════════════════════════════════════════════════
+
+FILE 1: SOP_RETAILER_ONBOARDING.txt (350 lines, 5-10 min per retailer)
+├─ Purpose: Enroll new retailers into the platform
+├─ Audience: Field onboarding staff
+├─ Steps: 5 (Verification → WhatsApp → Credit → First Order → Documentation)
+├─ Success Rate Target: 95%+
+├─ Includes: Phone scripts, troubleshooting, checklists, status tracking
+└─ Format: Printable 1-page checklist (landscape recommended)
+
+FILE 2: SOP_VENDOR_ONBOARDING.txt (400 lines, 15-20 min per vendor)
+├─ Purpose: Enroll new vendors into the platform
+├─ Audience: Field onboarding staff, supply chain team
+├─ Steps: 7 (Verification → WhatsApp → Commissions → Training → Order → Policy → Completion)
+├─ Success Rate Target: 95%+
+├─ Includes: Commission tiers, delivery requirements, phone scripts, checklists
+└─ Format: Printable 1-page detailed reference (landscape recommended)
+
+FILE 3: DAILY_OPS_CHECKLIST.txt (800 lines, ongoing daily use)
+├─ Purpose: Track daily operations and system health
+├─ Audience: Operations manager, on-duty staff
+├─ Frequency: Complete 3x daily (start/mid/end)
+├─ Metrics: Orders, failures, payments, team status
+├─ Includes: Health checks, incident tracking, metrics goals, sign-offs
+└─ Format: Printable daily log (one copy per day, filed for compliance)
+
+FILE 4: INCIDENT_RESPONSE_FLOW.txt (1000+ lines, emergency use)
+├─ Purpose: Respond to system issues and customer problems
+├─ Audience: All support staff, managers
+├─ Priority Levels: Critical (5 min) → High (15 min) → Medium (30 min) → Low
+├─ Scenarios: 5 detailed walkthroughs (500 errors, stuck orders, payments, vendors, complaints)
+├─ Includes: Decision trees, quick fixes, escalation paths, contact info
+└─ Format: Laminated reference card (keep at every support desk)
+
+FILE 5: MANUAL_OVERRIDE_PROCESS.txt (850 lines, rare emergency use)
+├─ Purpose: Manually fix stuck orders or retry failed transactions
+├─ Audience: Managers and senior support only (authorization required)
+├─ Authority Levels: 3 tiers (Staff/$500, Manager/$2000, Director/$2000+)
+├─ Override Types: 3 main (Retry Payment, Reassign Vendor, Manual Refund)
+├─ Includes: Approval workflows, audit trails, risk mitigation
+└─ Format: Laminated reference + approval log (manager office)
+
+FILE 6: CREDIT_DISPUTE_RESOLUTION.txt (1200+ lines, ongoing investigation)
+├─ Purpose: Handle customer disputes and debt recovery
+├─ Audience: Support staff, managers, finance team
+├─ Scenarios: 5 detailed (non-delivery, wrong items, payment, fraud, vendor disputes)
+├─ Investigation: 4-step process (intake, evidence, analysis, resolution)
+├─ Includes: Resolution matrix, communication templates, audit logs, appeals process
+└─ Format: Printed reference guide + daily dispute tracker (filed 12 months)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+QUICK START GUIDE
+════════════════════════════════════════════════════════════════════════════════
+
+If you're a new staff member:
+
+START HERE:
+1. Read this document (overview, context)
+2. Print & laminate: Daily_OPS_CHECKLIST.txt
+3. Print & laminate: INCIDENT_RESPONSE_FLOW.txt
+4. Read once: SOP_RETAILER_ONBOARDING.txt
+5. Read once: SOP_VENDOR_ONBOARDING.txt
+6. Scan & bookmark: MANUAL_OVERRIDE_PROCESS.txt
+7. Scan & bookmark: CREDIT_DISPUTE_RESOLUTION.txt
+
+DAILY USE:
+├─ 8:00 AM: Complete START OF DAY section in Daily Ops Checklist
+├─ 12:00 PM: Complete MID-DAY section in Daily Ops Checklist
+├─ During shift: Reference Incident Response Flow for any issues
+├─ 6:00 PM: Complete END OF DAY section in Daily Ops Checklist
+└─ As needed: Consult other SOPs for specific procedures
+
+WHEN PROBLEMS HAPPEN:
+├─ System issue → Use Incident Response Flow
+├─ Stuck order → Use Manual Override Process (with approval)
+├─ Customer complaint → Use Incident Response Flow → Resolution
+├─ Customer dispute → Use Credit Dispute Resolution
+├─ New retailer → Use SOP_Retailer_Onboarding
+└─ New vendor → Use SOP_Vendor_Onboarding
+
+
+═══════════════════════════════════════════════════════════════════════════════
+WORKFLOW: HOW TO USE THESE TOGETHER
+════════════════════════════════════════════════════════════════════════════════
+
+SCENARIO: Day starts with system down
+
+1. ✓ Complete START OF DAY in Daily Ops Checklist
+   └─ Check: "Website/app status: DOWN" ☐
+
+2. ✓ Consult Incident Response Flow
+   └─ Find: SCENARIO 1 (500 Error / Connection Failed)
+   └─ Follow: Step 1-3 troubleshooting
+
+3. ✓ Document in Daily Ops Checklist
+   └─ Fill: Issue Description + Time Reported
+
+4. ✓ Use Manual Override if stuck orders queue up
+   └─ Get: Manager approval for any manual fixes
+   └─ Log: Every override action
+
+5. ✓ Handle customer complaints with templates
+   └─ Use: Communication templates from Incident Response
+   └─ Track: Compensation via Manual Override Process
+
+6. ✓ Close incident when resolved
+   └─ Log: "Time Resolved" in Daily Ops Checklist
+   └─ Archive: Incident details for auditing
+
+7. ✓ End of day wrap-up
+   └─ Complete: END OF DAY section in Daily Ops
+   └─ File: Checklist for compliance (keep 12 months)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+CRITICAL CONTACTS (Fill In Immediately)
+════════════════════════════════════════════════════════════════════════════════
+
+Your Manager: ________________________ | Phone: ________________
+
+Tech Support: ________________________ | Phone: ________________
+
+Finance Manager: ________________________ | Phone: ________________
+
+Operations Director: ________________________ | Phone: ________________
+
+CEO/Escalation: ________________________ | Phone: ________________
+
+Emergency Line: ________________________ | Phone: ________________
+
+Note: Each SOP has a "Contact Information" section - fill it in before deployment
+
+
+═══════════════════════════════════════════════════════════════════════════════
+DEPLOYMENT CHECKLIST
+════════════════════════════════════════════════════════════════════════════════
+
+BEFORE GOING LIVE WITH THESE SOPs:
+
+☐ All 6 files printed (1 set per staff member, 3 backup sets)
+☐ Contact information filled in on all documents
+☐ All documents laminated or in sheet protectors
+☐ Each staff member trained on Quick Start Guide section
+☐ Daily Ops Checklist stored at operations desk (with pens)
+☐ Incident Response Flow laminated and at every support station
+☐ Manual Override Process laminated and in manager office
+☐ Credit Dispute Resolution stored with finance team
+☐ All files also available in shared drive as digital backup
+☐ Weekly training scheduled for first month
+☐ Manager spot-checks of completed checklists (weekly)
+☐ Feedback collection from staff (first 2 weeks)
+☐ Document updates captured and version-controlled
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TRAINING PROGRAM (First 2 Weeks)
+════════════════════════════════════════════════════════════════════════════════
+
+WEEK 1: Foundation Training (2 hours total)
+
+Day 1 (30 min):
+├─ Intro to SOP system and why it matters
+├─ Overview of 6 documents
+├─ Daily Ops Checklist walkthrough
+└─ Practice: Complete sample checklist
+
+Day 2 (30 min):
+├─ Incident Response Flow overview
+├─ Review 5 scenarios
+├─ Practice: Walk through "500 Error" scenario
+└─ Q&A
+
+Day 3 (30 min):
+├─ Onboarding SOPs (Retailer + Vendor)
+├─ Role-play: Conduct sample onboarding
+└─ Q&A
+
+Day 4 (30 min):
+├─ Manual Override Process (manager-only training)
+├─ Credit Dispute Resolution overview
+└─ Review approval workflows
+
+WEEK 2: Hands-On Practice (2 hours total)
+
+Day 1 (30 min):
+├─ Live Daily Ops Checklist completion
+├─ Manager review and feedback
+└─ Discuss metrics and targets
+
+Day 2 (30 min):
+├─ Observe experienced staff handling incident
+├─ Do one incident response yourself (supervised)
+└─ Debrief on process
+
+Day 3 (30 min):
+├─ Shadow complete onboarding (if staff doing it)
+├─ Or: Walk through dispute resolution example
+└─ Review documentation quality
+
+Day 4 (30 min):
+├─ Final Q&A
+├─ Review common mistakes
+├─ Competency check: Can they complete Daily Ops correctly?
+└─ Sign-off: Staff trained and ready for deployment
+
+
+═══════════════════════════════════════════════════════════════════════════════
+METRICS & SUCCESS TRACKING
+════════════════════════════════════════════════════════════════════════════════
+
+Track These Monthly to Measure SOP Effectiveness:
+
+OPERATIONAL CONSISTENCY:
+├─ % of Daily Ops Checklists completed fully: ____ / 100%
+├─ % of incidents documented properly: ____ / 100%
+├─ Average incident response time: ____ min (target: < 15 min for HIGH)
+├─ % of overrides properly approved: ____ / 100%
+└─ Goal: > 95% compliance across all metrics
+
+BUSINESS IMPACT:
+├─ Customer satisfaction scores: ______ (target: > 4.5/5)
+├─ % of disputes properly investigated: ____ / 100%
+├─ Refund rate as % of revenue: ____% (target: < 2%)
+├─ Order success rate: ____% (target: > 95%)
+├─ Vendor satisfaction scores: ______ (target: > 4.0/5)
+└─ Retailer retention rate: ____% (target: > 90%)
+
+STAFF COMPETENCY:
+├─ # of staff trained: ____ of ____ total
+├─ Training completion rate: ____% (target: 100%)
+├─ Manager spot-check scores: ____% (target: > 80% on first check)
+├─ Escalations properly handled: ____% (target: > 90%)
+└─ Zero unauthorized manual overrides: ☐ Yes | ☐ No
+
+PROCESS IMPROVEMENT:
+├─ Issues found in SOPs and updated: ____ (each month)
+├─ New scenarios/edge cases discovered: ____
+├─ Training improvements made: ____
+└─ Staff feedback implemented: ____
+
+
+═══════════════════════════════════════════════════════════════════════════════
+UPDATES & MAINTENANCE
+════════════════════════════════════════════════════════════════════════════════
+
+This is a LIVING DOCUMENT that will evolve. Maintain it properly:
+
+MONTHLY REVIEW (Last Friday of month):
+├─ Collect staff feedback from all 6 SOPs
+├─ Review incident logs for new scenarios
+├─ Update contact information if personnel changed
+├─ Mark any procedures that caused confusion
+├─ Create v1.1 if changes needed, republish updated version
+
+QUARTERLY AUDIT (Every 3 months):
+├─ Full walkthrough with manager
+├─ Compliance check: Are procedures actually being followed?
+├─ Effectiveness review: Are we achieving targets?
+├─ Staff interview: What's working? What's confusing?
+├─ Create v1.2 or v1.3 with improvements
+
+ANNUAL REVIEW (January each year):
+├─ Complete overhaul with finance and ops team
+├─ Integrate new learnings from past year
+├─ Update all contact information
+├─ Refresh all printed/laminated copies
+├─ Release v2.0 with major improvements
+
+VERSION CONTROL:
+├─ v1.0 = Initial release (current)
+├─ v1.1, v1.2, v1.3 = Minor updates (quarterly)
+├─ v2.0 = Major update (annual)
+├─ Keep: All version history for audit trail
+├─ Distribute: New version to all staff within 1 week of release
+
+
+═══════════════════════════════════════════════════════════════════════════════
+COMPLIANCE & AUDIT INFORMATION
+════════════════════════════════════════════════════════════════════════════════
+
+RETENTION POLICY:
+├─ Daily Ops Checklists: Keep 12 months minimum
+├─ Incident Response Logs: Keep 24 months minimum
+├─ Override Approvals: Keep indefinitely (financial records)
+├─ Dispute Resolution Files: Keep 36 months (may be needed for legal)
+├─ Training Records: Keep 3 years minimum
+
+AUDIT READINESS:
+✓ All procedures documented
+✓ All decisions have audit trail
+✓ Approval chain clearly recorded
+✓ Financial impact tracked for each action
+✓ Customer/vendor notification documented
+✓ Escalations properly logged
+✓ No hidden or undocumented procedures
+
+REGULATORY COMPLIANCE:
+├─ Consumer Protection: ✓ Dispute resolution process documented
+├─ Payment Security: ✓ Override approvals required for refunds
+├─ Employment: ✓ Staff training documentation
+├─ Financial Records: ✓ Audit trail for all transactions
+├─ Vendor Contracts: ✓ Dispute process aligns with vendor agreements
+└─ Data Privacy: ✓ Sensitive data handling documented
+
+WHEN AUDITORS ARRIVE:
+├─ Provide: Copies of these 6 SOPs
+├─ Provide: Last 12 months of Daily Ops Checklists (filed properly)
+├─ Provide: Last 24 months of significant incidents
+├─ Provide: All override approvals and justifications
+├─ Provide: Staff training records and competency checks
+├─ Provide: Dispute resolution files with full documentation
+├─ Provide: Metrics reports showing compliance
+
+
+═══════════════════════════════════════════════════════════════════════════════
+INTEGRATION WITH OTHER SYSTEMS
+════════════════════════════════════════════════════════════════════════════════
+
+These SOPs work together with your existing systems:
+
+MONITORING SYSTEM (From earlier phase):
+├─ Daily Ops Checklist uses monitoring dashboards to track health
+├─ Incident Response Flow escalates when monitoring alerts fire
+├─ Status from health-check.sh feeds into incident assessment
+└─ Alerts from monitoring drive daily checklist actions
+
+PERFORMANCE TESTING (From earlier phase):
+├─ Breaking points from performance tests inform override decisions
+├─ Queue backlog thresholds from tests guide manual intervention timing
+├─ Redis/DB failure scenarios from tests align with incident response
+└─ Performance targets from tests appear in daily ops metrics
+
+YOUR CRM SYSTEM:
+├─ Retailer/Vendor records pulled during onboarding
+├─ Incident history tracked in CRM for pattern detection
+├─ Dispute resolution outcomes recorded in customer record
+├─ Staff interactions logged for audit trail
+└─ Communication templates may be generated from CRM
+
+YOUR ADMIN PANEL:
+├─ All manual overrides executed through admin panel
+├─ Daily Ops data entered into system for reporting
+├─ Dispute statuses tracked in dispute management section
+├─ Approval workflows may use admin panel if configured
+└─ All actions logged for compliance
+
+YOUR PAYMENT SYSTEM:
+├─ Refunds processed through payment processor integration
+├─ Override approvals trigger payment system transactions
+├─ Dispute resolution may require payment processor communication
+└─ All financial transactions reconciled monthly
+
+COMMUNICATION TOOLS (WhatsApp/Email):
+├─ Message templates from SOPs used for customer communication
+├─ Incident notifications go through established channels
+├─ Refund confirmations sent via WhatsApp/Email
+└─ Escalation alerts sent to manager when needed
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FREQUENTLY ASKED QUESTIONS
+════════════════════════════════════════════════════════════════════════════════
+
+Q: Do I have to follow these SOPs exactly?
+A: Yes, exactly. They're designed for consistency and compliance. Deviations must
+   be documented and escalated. If you find issues, propose updates through your
+   manager.
+
+Q: What if the SOP doesn't cover my situation?
+A: 1) Check if it's covered in multiple SOPs, 2) Escalate to manager, 3) Document
+   what happened, 4) Process will be reviewed and SOP updated if needed.
+
+Q: How long should these processes take?
+A: Retailer onboarding: 5-10 min | Vendor onboarding: 15-20 min | Incident
+   response: 15 min for HIGH, 30 min for MEDIUM | Dispute resolution: 1-3 hours
+
+Q: What if I make a mistake following an SOP?
+A: Report it to your manager immediately. All actions are logged anyway. Focus
+   on honest reporting vs. hiding mistakes.
+
+Q: Can I skip steps in the checklists?
+A: No. Every step exists for a reason (compliance, audit, safety). If a step
+   seems unnecessary, discuss with manager.
+
+Q: What if a customer is angry during incident response?
+A: Use empathy and transparency. "I understand you're upset. Here's exactly what
+   I'm doing to fix it." Follow the incident response templates.
+
+Q: How do I handle situations not in these SOPs?
+A: Ask your manager. Don't improvise with high-stakes situations. Better to ask
+   for guidance than to create new problems.
+
+Q: Do these SOPs apply to managers too?
+A: Yes, managers must also follow them when handling incidents/disputes. Managers
+   also have APPROVAL responsibilities outlined in each SOP.
+
+Q: How often are these SOPs updated?
+A: Monthly feedback collection, quarterly audits, annual major review. Check
+   version number - only follow current version.
+
+Q: What if I find an error in the SOP?
+A: Report to your manager immediately. Don't fix it yourself. They'll document
+   the issue and include in next quarterly update.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+EMERGENCY CONTACTS & ESCALATION
+════════════════════════════════════════════════════════════════════════════════
+
+If everything is broken and you don't know what to do:
+
+STEP 1: Try to reach your direct manager (first choice)
+STEP 2: Try operations director (if manager unavailable)
+STEP 3: Try CEO or emergency contact
+STEP 4: Document everything and wait for instructions
+STEP 5: Never continue operating without guidance in CRITICAL situations
+
+Emergency Contact:
+├─ Name: ________________________
+├─ Phone: ________________________
+├─ Email: ________________________
+├─ Available 24/7: ☐ Yes | ☐ Business hours only
+└─ For situations: Security breach, complete system down, legal threat, police
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+════════════════════════════════════════════════════════════════════════════════
+
+These SOPs are working well when:
+
+✓ Daily Ops Checklists are > 95% complete every day
+✓ Incident response time is < 15 minutes for all HIGH priority issues
+✓ Customer satisfaction scores are > 4.5/5 stars
+✓ Vendor satisfaction scores are > 4.0/5 stars
+✓ Order success rate is > 95% (not stuck/failed)
+✓ Refund rate is < 2% of revenue
+✓ Retailer retention rate is > 90%
+✓ All disputes are properly investigated (100% documentation)
+✓ Zero unauthorized manual overrides (100% approved)
+✓ Staff feel confident following procedures
+✓ No surprised incidents or "unknown" situations
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FINAL NOTES
+════════════════════════════════════════════════════════════════════════════════
+
+These SOPs represent the operational knowledge of a mature, professional business.
+They're built on principles of:
+
+✓ CONSISTENCY - Every situation handled the same way
+✓ FAIRNESS - Clear rules applied equally to all
+✓ ACCOUNTABILITY - Everything logged and traceable
+✓ TRANSPARENCY - Customers and vendors know where they stand
+✓ SAFETY - Procedures protect company and customers
+✓ EFFICIENCY - Processes are optimized, not wasteful
+✓ COMPLIANCE - Meeting all legal and regulatory requirements
+✓ PROFESSIONALISM - Staff trained and empowered to help
+
+When you follow these SOPs, you're not just doing a job - you're building a
+business that customers and vendors trust. That trust is valuable.
+
+Use these procedures with pride. They're designed to make your job easier and
+your workplace more professional.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+DOCUMENT HISTORY
+════════════════════════════════════════════════════════════════════════════════
+
+Version 1.0 - Initial Release
+├─ Date: January 22, 2026
+├─ Files: 6 complete SOPs
+├─ Status: Ready for production deployment
+├─ Reviewed by: Operations Team
+├─ Approved by: Management
+└─ Distribution: All staff, managers, finance team
+
+Version 1.1 - (Planned for March 2026)
+└─ Quarterly updates based on staff feedback and incident learnings
+
+Version 2.0 - (Planned for January 2027)
+└─ Annual comprehensive review and major improvements
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Thank you for your commitment to excellence. These procedures work only when
+everyone follows them with care and consistency.
+
+Questions? Ask your manager.
+Suggestions? Tell your manager.
+Errors found? Tell your manager immediately.
+
+Together, we'll build a world-class operation.
+
+═══════════════════════════════════════════════════════════════════════════════
+Last Updated: January 22, 2026 | VERSION: 1.0 | PAGE COUNT: 6+ documents
+═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,675 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║           CREDIT DISPUTE RESOLUTION FLOW & DEBT RECOVERY v1.0            ║
+║              Retail Credit Claims & Vendor Dispute Process               ║
+║                    Manager-Level Authorization Required                  ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+WHEN DISPUTES HAPPEN
+════════════════════════════════════════════════════════════════════════════════
+
+SCENARIO 1: Retailer Claims "I Never Received Order But Was Charged"
+├─ Retailer paid $ for order
+├─ Retailer says order never arrived
+├─ Order shows as "Delivered" in system
+├─ Retailer demands refund
+
+SCENARIO 2: Retailer Claims "Order was Wrong/Damaged"
+├─ Received order but items were wrong/damaged
+├─ Claims vendor's fault
+├─ Demands full or partial refund
+├─ May have already given refund to customer
+
+SCENARIO 3: Vendor Claims "Retailer Didn't Pay Commission"
+├─ Vendor says system shows commission not paid
+├─ Vendor threatening to stop fulfilling orders
+├─ Vendor demanding payment proof or money
+├─ May have stopped accepting orders
+
+SCENARIO 4: Retailer "Over-charged" Claim
+├─ Retailer charged $ but says amount wrong
+├─ Says price was promised differently
+├─ Claims system overcharged
+├─ Demands reconciliation
+
+SCENARIO 5: Vendor-Retailer Direct Dispute
+├─ Retailer and Vendor arguing about quality/payment
+├─ Both claiming the other did wrong
+├─ One threatening legal action
+├─ We're caught in the middle
+
+
+═══════════════════════════════════════════════════════════════════════════════
+DISPUTE RESPONSE PRIORITY
+════════════════════════════════════════════════════════════════════════════════
+
+🔴 CRITICAL - Respond within 1 hour
+├─ Retailer threatening to charge back credit card
+├─ Vendor threatening to sue
+├─ Legal notice received
+├─ Media/social media public complaint
+└─ Amount > $1,000
+
+🟠 HIGH - Respond within 4 hours
+├─ Retailer very upset (multiple calls/messages)
+├─ Multiple orders affected (not just one)
+├─ Vendor refusing to fulfill orders pending resolution
+├─ Amount $200-$1,000
+└─ Pattern issue (same problem, multiple people)
+
+🟡 MEDIUM - Respond within 24 hours
+├─ Single order dispute
+├─ Retailer calmly explaining issue
+├─ Amount < $200
+├─ First occurrence for this retailer
+└─ Clear evidence available
+
+🟢 LOW - Respond within 3 days
+├─ Very minor discrepancy (< $5)
+├─ Retailer just asking for clarification
+├─ No financial impact claimed
+└─ Easily verifiable
+
+
+═══════════════════════════════════════════════════════════════════════════════
+DISPUTE INVESTIGATION PROCESS
+════════════════════════════════════════════════════════════════════════════════
+
+STEP 1: INITIAL INTAKE
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Dispute #: ________________________ (auto-generated)                    │
+│ Date Reported: ________________________  Time: ________________         │
+│ Reported By: ☐ Retailer | ☐ Vendor | ☐ Customer | ☐ Other: _________ │
+│                                                                         │
+│ Contact Information:                                                    │
+│ ├─ Name: ________________________                                        │
+│ ├─ Phone: ________________________                                       │
+│ ├─ Email: ________________________                                       │
+│ ├─ Business ID: ________________________                                │
+│ └─ Account Status: ☐ Active | ☐ Suspended | ☐ At Risk                 │
+│                                                                         │
+│ Dispute Category: ☐ Missing Order | ☐ Wrong Items | ☐ Payment         │
+│                  ☐ Quality Issue | ☐ Vendor Dispute | ☐ Other:_______│
+│                                                                         │
+│ Amount in Dispute: $ ________________                                  │
+│ Priority Level: 🔴 CRITICAL | 🟠 HIGH | 🟡 MEDIUM | 🟢 LOW           │
+│                                                                         │
+│ Detailed Claim (verbatim):                                             │
+│ _____________________________________________________________________ │
+│ _____________________________________________________________________ │
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Evidence Provided: ☐ Photos | ☐ Screenshots | ☐ Messages | ☐ None    │
+│ Evidence files: ________________________                                │
+│                                                                         │
+│ Caller Tone: ☐ Calm | ☐ Frustrated | ☐ Angry | ☐ Threatening         │
+│ De-escalation needed: ☐ Yes | ☐ No                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+STEP 2: DATA GATHERING
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Order Information:                                                      │
+│ ├─ Order ID: ________________________                                    │
+│ ├─ Order Date/Time: ________________________                            │
+│ ├─ Order Amount: $ ________________                                     │
+│ ├─ Items Ordered: ________________________________________________     │
+│ └─ Delivery Address: ____________________________________________   │
+│                                                                         │
+│ Transaction Information:                                               │
+│ ├─ Payment Method: ☐ Card | ☐ Wallet | ☐ Credit Line | ☐ Cash       │
+│ ├─ Transaction ID: ________________________                             │
+│ ├─ Charge Date: ________________________                                │
+│ ├─ Payment Status in System: ☐ Success | ☐ Failed | ☐ Pending        │
+│ ├─ Amount Charged: $ ________________                                  │
+│ └─ Refund Status: ☐ None | ☐ Pending | ☐ Completed: $_________      │
+│                                                                         │
+│ Order Status Timeline:                                                 │
+│ ├─ Created at: ________________________                                 │
+│ ├─ Assigned to Vendor: ________________________ at ____________ time  │
+│ ├─ Vendor Response: ☐ Accepted | ☐ Rejected | ☐ No response          │
+│ ├─ Prepared/Ready: ________________________                             │
+│ ├─ Pickup by Driver: ________________________                           │
+│ ├─ Marked as Delivered: ________________________ at ____________ time  │
+│ ├─ Delivery Proof: ☐ Photo | ☐ GPS | ☐ No proof                      │
+│ └─ Retailer Feedback: ___________________________________________  │
+│                                                                         │
+│ Vendor Information:                                                     │
+│ ├─ Vendor Name: ________________________                                │
+│ ├─ Vendor ID: ________________________                                  │
+│ ├─ Vendor Status: ☐ Active | ☐ Suspended | ☐ Under Review            │
+│ ├─ Vendor Rating: ______ stars (out of 5)                             │
+│ ├─ Vendor History: ☐ Clean | ☐ Previous complaints | ☐ Problem account│
+│ └─ Vendor Response to Investigation: _____________________________   │
+│                                                                         │
+│ Retailer Account History:                                              │
+│ ├─ Total Orders: ________________ (in system)                          │
+│ ├─ Total Spent: $ ________________                                     │
+│ ├─ Average Order Value: $ ________________                             │
+│ ├─ Dispute History: ________________ (count of previous disputes)      │
+│ ├─ Previous Disputes Resolved: ☐ Yes | ☐ No                          │
+│ ├─ Chargeback History: ☐ None | ☐ Yes (count: ______)               │
+│ ├─ Account Trust Score: _________ / 100 (system-calculated)          │
+│ └─ Payment Status: ☐ Current | ☐ Behind | ☐ Delinquent             │
+└─────────────────────────────────────────────────────────────────────────┘
+
+STEP 3: EVIDENCE REVIEW
+┌─────────────────────────────────────────────────────────────────────────┐
+│ A. Retailer-Provided Evidence:                                         │
+│ ├─ Photos submitted: ☐ Yes (count: ____) | ☐ No | ☐ Refused        │
+│   ├─ If yes, show what?: ___________________________________________  │
+│   └─ Quality/authenticity: ☐ Genuine | ☐ Questionable | ☐ Fake       │
+│                                                                         │
+│ ├─ Screenshots submitted: ☐ Yes | ☐ No | ☐ Refused                  │
+│   ├─ If yes, of what?: ______________________________________________│
+│   └─ Authenticity: ☐ Genuine | ☐ Questionable | ☐ Fake               │
+│                                                                         │
+│ ├─ Witness statement: ☐ Yes | ☐ No | ☐ Can't provide                │
+│   └─ Details: ______________________________________________________│
+│                                                                         │
+│ B. Our System Evidence:                                                │
+│ ├─ Order creation logs: ☐ Reviewed | ☐ Not available                │
+│ ├─ Payment logs: ☐ Reviewed | ☐ Not available                        │
+│ ├─ GPS/delivery proof: ☐ Available | ☐ Not available                 │
+│   └─ Shows: ________________________________________________________│
+│                                                                         │
+│ ├─ Vendor preparation logs: ☐ Available | ☐ Not available            │
+│ ├─ Driver route data: ☐ Available | ☐ Not available                  │
+│ └─ WhatsApp message records: ☐ Available | ☐ Not available           │
+│                                                                         │
+│ C. Third-Party Evidence:                                               │
+│ ├─ Vendor statement: ☐ Obtained | ☐ Not obtained | ☐ Refused         │
+│   └─ Vendor says: ___________________________________________________│
+│                                                                         │
+│ ├─ Driver statement: ☐ Obtained | ☐ Not obtained | ☐ Refused         │
+│   └─ Driver says: ____________________________________________________│
+│                                                                         │
+│ ├─ Customer statement: ☐ Obtained | ☐ Not obtained | ☐ N/A            │
+│   └─ Customer says: __________________________________________________│
+│                                                                         │
+│ ├─ Payment processor response: ☐ Available | ☐ Not available          │
+│   └─ Shows: __________________________________________________________│
+│                                                                         │
+│ D. Overall Evidence Assessment:                                        │
+│    Evidence supports retailer claim: ☐ Strongly | ☐ Somewhat          │
+│                                     ☐ Neutral | ☐ Questionable        │
+│                                     ☐ Contradicts claim               │
+│                                                                         │
+│    Confidence in assessment: ☐ High (90%+) | ☐ Moderate (70-90%)    │
+│                             ☐ Low (50-70%) | ☐ Very Low (<50%)      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+STEP 4: INVESTIGATION FINDINGS
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Most Likely Scenario:                                                   │
+│ ☐ Retailer claim is TRUE                                               │
+│ ☐ Retailer claim is FALSE                                              │
+│ ☐ Partially true (some of claim valid, some not)                       │
+│ ☐ Unable to determine (insufficient evidence)                          │
+│ ☐ Evidence inconclusive (could go either way)                          │
+│                                                                         │
+│ Root Cause (if applicable):                                            │
+│ ☐ Vendor error (prepared wrong items / didn't prepare)                │
+│ ☐ Driver error (wrong address / lost delivery / stole order)          │
+│ ☐ System error (marked delivered when not actually)                   │
+│ ☐ Retailer error (lost order themselves / forgot they got it)        │
+│ ☐ Fraud (retailer trying to get free order)                           │
+│ ☐ Cannot determine                                                     │
+│                                                                         │
+│ Details: ___________________________________________________________________│
+│ _____________________________________________________________________ │
+│                                                                         │
+│ Party at Fault:                                                        │
+│ ☐ Our company (we owe refund/compensation)                            │
+│ ☐ Vendor (should compensate retailer, we facilitate)                 │
+│ ☐ Driver (our employee - we're responsible)                           │
+│ ☐ Retailer (their error, we owe nothing)                              │
+│ ☐ Unable to determine (split responsibility)                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RESOLUTION DECISION MATRIX
+════════════════════════════════════════════════════════════════════════════════
+
+CASE TYPE 1: CLEAR SYSTEM/COMPANY FAULT (We're at fault)
+├─ Outcome: We owe full refund or compensation
+├─ Resolution: Issue refund immediately
+├─ Compensation: Full refund + 10-20% discount on future orders
+├─ Follow-up: Investigate why system failed
+├─ Vendor/Driver: May need retraining or discipline
+└─ Example: Order marked delivered but GPS shows driver nowhere near
+
+CASE TYPE 2: VENDOR FAULT (Vendor is at fault)
+├─ Outcome: Vendor should compensate retailer
+├─ Resolution: Facilitate payment from vendor to retailer
+├─ Compensation: Vendor reimburses retailer for order amount
+├─ Follow-up: Note incident on vendor record
+├─ Vendor: May face suspension if pattern
+└─ Example: Vendor admitted they didn't prepare order
+
+CASE TYPE 3: DRIVER FAULT (Our delivery person at fault)
+├─ Outcome: We're responsible (driver is our agent)
+├─ Resolution: Issue full refund to retailer
+├─ Compensation: Full refund + apology
+├─ Follow-up: Investigate driver, possible discipline
+├─ Driver: May face warning or termination if repeated
+└─ Example: Driver delivered to wrong address
+
+CASE TYPE 4: RETAILER FRAUD/FALSE CLAIM
+├─ Outcome: Retailer is lying, we owe nothing
+├─ Resolution: Deny claim and explain findings
+├─ Compensation: None - retailer falsely claimed
+├─ Follow-up: Document fraud attempt
+├─ Retailer: First attempt = warning, repeated = account suspension
+└─ Example: GPS and photos prove driver delivered, retailer lying
+
+CASE TYPE 5: INSUFFICIENT EVIDENCE (Can't determine)
+├─ Outcome: Benefit of doubt to retailer (customer service call)
+├─ Resolution: Issue 50% refund/credit
+├─ Compensation: Credit for half of order value
+├─ Follow-up: Install better tracking for future
+├─ Reason: Maintain customer relationship, unclear who at fault
+└─ Example: No GPS data available, no delivery photos, conflicting stories
+
+CASE TYPE 6: VENDOR-RETAILER DISPUTE (Both claiming wrongdoing)
+├─ Outcome: Find middle ground, usually split responsibility
+├─ Resolution: Split compensation (50/50 or case-by-case)
+├─ Compensation: Both parties may get partial credit
+├─ Follow-up: Mediate discussion between vendor and retailer
+├─ Action: Prevent similar issue through better communication
+└─ Example: Vendor says items were ready, Retailer says never picked up
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RESOLUTION ACTIONS
+════════════════════════════════════════════════════════════════════════════════
+
+ACTION 1: ISSUE REFUND TO RETAILER
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Get Manager Approval:                                                │
+│   Refund Amount: $ ________________ (___% of order)                   │
+│   Reason: [Auto-populated from findings]                              │
+│   Manager: ________________________  Approval: ☐ Yes | ☐ No          │
+│                                                                         │
+│ If No Approval: STOP - Do not issue refund. Escalate to Director      │
+│                                                                         │
+│ ☐ Process Refund:                                                      │
+│   Method 1: Admin Panel → Refunds → Issue Refund                     │
+│   Method 2: CLI: ./bin/issue-refund.sh [OrderID] [Amount]            │
+│                                                                         │
+│ ☐ Verify Refund:                                                       │
+│   ├─ Check: System shows refund "Processing"                          │
+│   ├─ Time to appear in account: 1-3 business days                    │
+│   ├─ If card refund: Check with payment processor (1-7 days)         │
+│   └─ If wallet credit: Should appear immediately                      │
+│                                                                         │
+│ ☐ Document:                                                            │
+│   Refund ID: ________________________                                   │
+│   Amount: $ ________________                                           │
+│   Date Issued: ________________________                                │
+│   Expected in account: ________________________                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ACTION 2: ISSUE CREDIT/DISCOUNT TO RETAILER
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Get Manager Approval:                                                │
+│   Credit Amount: $ ________________                                    │
+│   Discount %: ____% off future orders                                 │
+│   Manager: ________________________  Approval: ☐ Yes | ☐ No          │
+│                                                                         │
+│ ☐ Add Credit to Account:                                               │
+│   Admin Panel → Retailer Account → Add Credit                         │
+│   Amount: $ ________________                                           │
+│   Reason: Dispute Resolution #[ID]                                    │
+│   Click: "Add Credit"                                                 │
+│                                                                         │
+│ ☐ Apply Discount Code (if applicable):                                │
+│   Code: [Auto-generated or manual]                                    │
+│   Discount: ____%                                                     │
+│   Valid until: ________________________                                │
+│                                                                         │
+│ ☐ Document:                                                            │
+│   Credit Applied: $ ________________                                   │
+│   Discount Code: ________________________                               │
+│   Expiration Date: ________________________                             │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ACTION 3: DEMAND PAYMENT FROM VENDOR
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Only if vendor was at fault (vendor owes retailer)                     │
+│                                                                         │
+│ ☐ Get Manager Approval:                                                │
+│   Amount to demand from Vendor: $ ________________                    │
+│   Reason: Vendor error in order fulfillment                           │
+│   Manager: ________________________  Approval: ☐ Yes | ☐ No          │
+│                                                                         │
+│ ☐ Contact Vendor:                                                      │
+│   WhatsApp: "Hi [Vendor], an order has been disputed. The retailer   │
+│   claims [issue]. Our investigation found [finding]. We're asking    │
+│   you to compensate the retailer: $ ________. Please confirm your   │
+│   payment within 24 hours."                                            │
+│                                                                         │
+│ ☐ Wait for Vendor Response:                                            │
+│   ├─ Vendor agrees: ☐ Yes | ☐ No | ☐ Partial                        │
+│   ├─ Vendor response: ___________________________________________    │
+│   └─ Vendor payment status: ☐ Paid | ☐ Pending | ☐ Refused          │
+│                                                                         │
+│ ☐ If Vendor Refuses:                                                   │
+│   ├─ Deduct from vendor's next commission payment                     │
+│   ├─ Or: Hold commission until payment received                       │
+│   ├─ Or: Suspend vendor account if critical (with approval)           │
+│   └─ Document: This action for future reference                       │
+│                                                                         │
+│ ☐ Track Payment:                                                       │
+│   Amount demanded: $ ________________                                  │
+│   Amount received: $ ________________                                  │
+│   Payment date: ________________________                                │
+│   Status: ☐ Fully paid | ☐ Partially paid | ☐ Outstanding           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ACTION 4: DISCIPLINE VENDOR
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Only if vendor was at fault AND this is not first incident             │
+│                                                                         │
+│ ☐ Get Manager Approval:                                                │
+│   Action: ☐ Warning | ☐ Probation | ☐ Suspension | ☐ Termination   │
+│   Manager: ________________________  Approval: ☐ Yes | ☐ No          │
+│                                                                         │
+│ ACTION SCALE:                                                           │
+│ ├─ 1st incident: Warning (documented)                                 │
+│ ├─ 2nd incident: Probation (60 days, monitored)                       │
+│ ├─ 3rd incident: Suspension (14 days, cannot fulfill orders)          │
+│ ├─ 4th incident: Termination (account closed permanently)             │
+│ └─ Major incident (fraud/theft): Immediate termination + legal        │
+│                                                                         │
+│ ☐ Notify Vendor:                                                       │
+│   WhatsApp: "Hi [Vendor], your account is [STATUS] due to incident   │
+│   with order [ID]. Reason: [Reason]. [If warning/probation/etc]      │
+│   We expect improvement going forward. Contact us if you have         │
+│   questions."                                                          │
+│                                                                         │
+│ ☐ Document Action:                                                     │
+│   Incident ID: ________________________                                │
+│   Action taken: ________________________                               │
+│   Duration (if suspension): ________________________                   │
+│   Date to review/lift: ________________________                       │
+│   Conditions to reinstate: ___________________________________       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ACTION 5: DISCIPLINE/SUSPEND RETAILER ACCOUNT
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Only if retailer was fraudulent (falsely claiming issues to get refunds)│
+│                                                                         │
+│ ☐ Get Manager Approval:                                                │
+│   Action: ☐ Warning | ☐ Probation | ☐ Account Suspension             │
+│   Manager: ________________________  Approval: ☐ Yes | ☐ No          │
+│                                                                         │
+│ ACTION SCALE:                                                           │
+│ ├─ 1st false claim: Warning (documented)                              │
+│ ├─ 2nd false claim: Probation (60 days, payment upfront only)         │
+│ ├─ 3rd false claim: Suspension (14 days account locked)               │
+│ ├─ 4th false claim: Termination (account closed permanently)          │
+│ └─ Major fraud: Immediate termination + legal                         │
+│                                                                         │
+│ ☐ Notify Retailer:                                                     │
+│   WhatsApp: "Hi [Retailer], we investigated your dispute about order  │
+│   [ID] and found that your claim was inaccurate. This is [1st/2nd/etc]│
+│   instance. We take fraud seriously. Your account is now [WARNING/   │
+│   PROBATION/SUSPENDED]. Repeat behavior may result in permanent        │
+│   termination."                                                         │
+│                                                                         │
+│ ☐ Document Action:                                                     │
+│   Dispute ID: ________________________                                 │
+│   Finding: Fraud/False Claim                                          │
+│   Action taken: ________________________                               │
+│   Duration (if suspension): ________________________                   │
+│   Date to review: ________________________                             │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ACTION 6: MEDIATE VENDOR-RETAILER DISPUTE
+┌─────────────────────────────────────────────────────────────────────────┐
+│ When both parties have competing claims                                 │
+│                                                                         │
+│ ☐ Get Manager Approval:                                                │
+│   Mediation approach: [Describe how to resolve]                       │
+│   Manager: ________________________  Approval: ☐ Yes | ☐ No          │
+│                                                                         │
+│ ☐ Schedule Call/Meeting:                                               │
+│   Vendor: ________________________  Date/Time: _________________      │
+│   Retailer: ________________________  Date/Time: _________________    │
+│   Your role: Mediator (neutral, listening to both sides)              │
+│                                                                         │
+│ ☐ Facilitated Discussion:                                              │
+│   ├─ Vendor explains their side: _________________________________   │
+│   ├─ Retailer explains their side: _____________________________     │
+│   ├─ Key disagreement: ________________________________________     │
+│   └─ Possible compromise: ____________________________________     │
+│                                                                         │
+│ ☐ Proposed Settlement:                                                 │
+│   ├─ What vendor agrees to: _____________________________________  │
+│   ├─ What retailer agrees to: ___________________________________  │
+│   ├─ What we (company) do: ______________________________________│
+│   └─ Both parties consent: ☐ Yes | ☐ No - Proceed to arbitration    │
+│                                                                         │
+│ ☐ Document Agreement:                                                  │
+│   Settlement ID: ________________________                              │
+│   Vendor agrees: [Signature line] Date: ______________               │
+│   Retailer agrees: [Signature line] Date: ______________             │
+│   Company (you): [Signature line] Date: ______________               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+COMMUNICATION TEMPLATES
+════════════════════════════════════════════════════════════════════════════════
+
+TEMPLATE 1: Informing Retailer of Refund (We Were at Fault)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ "Hi [Retailer Name],                                                    │
+│                                                                         │
+│ We've completed our investigation into your order #[ID].               │
+│                                                                         │
+│ We found that: [Specific finding]                                      │
+│                                                                         │
+│ This was our fault, and we sincerely apologize for the inconvenience.  │
+│                                                                         │
+│ We're issuing you a full refund of $ _______ to your account. You     │
+│ should see it within 1-3 business days.                                │
+│                                                                         │
+│ As a token of our apology, we've also added $ _______ credit to your  │
+│ account for your next order.                                           │
+│                                                                         │
+│ We're investigating how this happened so it doesn't happen again.      │
+│                                                                         │
+│ Please don't hesitate to reach out if you have any questions.          │
+│                                                                         │
+│ Thank you for your understanding.                                      │
+│ - [Your Name, Support Team]"                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+TEMPLATE 2: Denying Refund Request (Retailer at Fault/Fraud)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ "Hi [Retailer Name],                                                    │
+│                                                                         │
+│ We've completed our investigation into your dispute about order #[ID]. │
+│                                                                         │
+│ After reviewing all available evidence (GPS data, photos, delivery     │
+│ logs), we found that:                                                  │
+│                                                                         │
+│ [Specific findings contradicting their claim]                          │
+│                                                                         │
+│ Based on our investigation, we cannot approve your refund request.     │
+│ The order was successfully delivered as promised.                      │
+│                                                                         │
+│ If you believe this is incorrect, you may appeal by providing          │
+│ additional evidence within 7 days.                                     │
+│                                                                         │
+│ If you have questions about our findings, please reply to this         │
+│ message.                                                                │
+│                                                                         │
+│ - [Your Name, Support Team]"                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+TEMPLATE 3: Informing Vendor They Owe Compensation
+┌─────────────────────────────────────────────────────────────────────────┐
+│ "Hi [Vendor Name],                                                      │
+│                                                                         │
+│ We've investigated a dispute about order #[ID].                        │
+│                                                                         │
+│ The retailer reported: [Issue]                                         │
+│                                                                         │
+│ Our investigation found: [Your finding] - This was a vendor error      │
+│                                                                         │
+│ We're asking you to compensate the retailer $ _______ for this        │
+│ incident.                                                               │
+│                                                                         │
+│ Please arrange payment with the retailer within 24 hours. You can      │
+│ contact them at: [retailer contact]                                    │
+│                                                                         │
+│ If we don't receive confirmation of payment by tomorrow, we'll deduct  │
+│ it from your next commission payment.                                  │
+│                                                                         │
+│ We take order quality seriously. Please let us know if you have        │
+│ questions.                                                              │
+│                                                                         │
+│ - [Your Name, Support Team]"                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+TEMPLATE 4: Warning for Repeated False Claims
+┌─────────────────────────────────────────────────────────────────────────┐
+│ "Hi [Retailer Name],                                                    │
+│                                                                         │
+│ This is a formal warning regarding your dispute history.               │
+│                                                                         │
+│ You've submitted [count] dispute(s) claiming non-delivery, but our     │
+│ investigation found evidence contradicting each claim.                 │
+│                                                                         │
+│ We take fraud very seriously. If we identify additional false claims,  │
+│ we will need to:                                                        │
+│                                                                         │
+│ 1. Require payment upfront for all future orders (no credit line)      │
+│ 2. If pattern continues, suspend your account                         │
+│ 3. In case of major fraud, report to authorities and legal team       │
+│                                                                         │
+│ We value your business and want this to work out. Please ensure all    │
+│ future disputes are legitimate and well-documented.                    │
+│                                                                         │
+│ If you believe our findings are incorrect, you have 7 days to appeal   │
+│ with additional evidence.                                               │
+│                                                                         │
+│ - [Your Name, Support Team]"                                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+DISPUTE TRACKING LOG
+════════════════════════════════════════════════════════════════════════════════
+
+Every dispute must be logged for compliance and pattern detection:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Dispute #: ________________________                                     │
+│ Date Reported: ________________________                                 │
+│ Reported By: ☐ Retailer | ☐ Vendor                                    │
+│ Category: ☐ Non-Delivery | ☐ Wrong Items | ☐ Quality | ☐ Payment    │
+│ Amount: $ ________________                                             │
+│                                                                         │
+│ Investigation Duration: ____________ hours                             │
+│ Investigation Finding: ☐ Company Fault | ☐ Vendor Fault | ☐ Fraud    │
+│                       ☐ Insufficient Evidence | ☐ Shared Fault        │
+│                                                                         │
+│ Resolution: ☐ Refund | ☐ Credit | ☐ Compensation | ☐ Denied          │
+│ Amount Paid Out: $ ________________                                    │
+│                                                                         │
+│ Retailer Satisfaction: ☐ Satisfied | ☐ Neutral | ☐ Unsatisfied       │
+│ Outcome: ☐ Resolved | ☐ Appealing | ☐ Escalated                      │
+│                                                                         │
+│ Date Closed: ________________________                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+DISPUTE ANALYTICS & PATTERNS
+════════════════════════════════════════════════════════════════════════════════
+
+Report Monthly on:
+├─ Total disputes filed: ______ (trend: up/down/stable)
+├─ Refunds issued: $ ________________ (% of revenue: ___%)
+├─ Refunds as % of orders: ___% (benchmark: < 2%)
+├─ Average investigation time: _______ hours
+│
+├─ Top complainers:
+│  ├─ Retailer 1: _____ disputes
+│  ├─ Retailer 2: _____ disputes
+│  └─ Retailer 3: _____ disputes
+│
+├─ Fraud rate: _____% (retailers making false claims)
+├─ System error disputes: _____% of all disputes
+├─ Vendor performance issues: _____% (should be < 5%)
+│
+├─ Resolution rates by type:
+│  ├─ Non-delivery: ___% of disputes
+│  ├─ Wrong items: ___% of disputes
+│  ├─ Quality issues: ___% of disputes
+│  └─ Payment: ___% of disputes
+│
+└─ Action items for next month: ________________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ESCALATION PATH FOR DISPUTES
+════════════════════════════════════════════════════════════════════════════════
+
+Level 1: Support Staff (Handle routine disputes < $50)
+├─ Clear-cut cases (obvious fault)
+├─ Established pattern (same issue, multiple people)
+├─ Policy-based decisions (pre-approved scenarios)
+└─ Escalate if: Fraud suspected, > $50, or unclear
+
+Level 2: Manager (Handle complex disputes $50-$500)
+├─ Moderate investigation needed
+├─ Judgment call required
+├─ Vendor/Retailer dispute mediation
+└─ Escalate if: > $500, legal threat, or fraud
+
+Level 3: Director (Handle major disputes > $500)
+├─ Significant financial impact
+├─ Legal/fraud concerns
+├─ Pattern behavior needing intervention
+└─ Escalate if: Legal action threatened, media involvement
+
+Level 4: Legal Team (Handle legal/fraud cases)
+├─ Chargeback disputes
+├─ Fraud investigations
+├─ Vendor/Retailer attempting legal action
+└─ Police reports or regulatory involvement
+
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY RULES
+════════════════════════════════════════════════════════════════════════════════
+
+✓ DO:
+├─ Investigate thoroughly before deciding
+├─ Gather all evidence before making judgment
+├─ Give benefit of doubt in unclear cases
+├─ Communicate findings clearly to all parties
+├─ Document everything for compliance
+├─ Escalate when uncertain
+├─ Be fair and consistent
+└─ Treat all parties respectfully
+
+✗ DON'T:
+├─ Make decisions without investigation
+├─ Take a party's word without evidence
+├─ Show bias toward company/vendor/retailer
+├─ Make promises before approval
+├─ Skip documentation
+├─ Dismiss legitimate complaints
+├─ Retaliate against complainers
+└─ Discuss confidential details publicly
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Last Updated: January 22, 2026 | VERSION: 1.0
+═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,520 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║              INCIDENT RESPONSE FLOW & DECISION TREE v1.0                 ║
+║                 Quick Reference for Field Operations Team                ║
+║              Keep Laminated Copy at Each Support Station                ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+INCIDENT PRIORITY LEVELS
+════════════════════════════════════════════════════════════════════════════
+
+🔴 CRITICAL (Respond within 5 minutes)
+├─ System completely down
+├─ Major security breach
+├─ All orders failing
+├─ Database corrupted
+└─ Revenue impact > $10,000/hour
+
+🟠 HIGH (Respond within 15 minutes)
+├─ Partial system outage (some services down)
+├─ Large number of failed orders (>50 in 1 hour)
+├─ Payment processing failing
+├─ Major data inconsistency
+└─ Potential customer/vendor safety issue
+
+🟡 MEDIUM (Respond within 30 minutes)
+├─ Individual order failures (< 5% rate)
+├─ WhatsApp integration slow
+├─ Database queries slow
+├─ Vendor availability issues
+└─ Minor data discrepancies
+
+🟢 LOW (Respond by end of day)
+├─ Single user complaint
+├─ Cosmetic UI issues
+├─ Non-critical data drift
+├─ Informational alerts
+└─ Documentation updates needed
+
+
+═══════════════════════════════════════════════════════════════════════════════
+INCIDENT RESPONSE CHECKLIST
+════════════════════════════════════════════════════════════════════════════
+
+FIRST RESPONSE (Within 5 minutes)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ STOP and assess - do NOT make changes yet                            │
+│ ☐ Note time incident started (ask reporters): ________________         │
+│ ☐ Check if you've seen this before: ☐ Yes ☐ No                       │
+│ ☐ Take a screenshot/photo of error message                            │
+│ ☐ Determine priority level: 🔴 HIGH 🟠 MEDIUM 🟡 LOW 🟢              │
+│ ☐ Document: What is broken? Who reported it? How many affected?       │
+│ ☐ Alert manager if CRITICAL or HIGH priority                          │
+│ ☐ Check customer impact: 1 person / 10 people / 100+ people           │
+│ ☐ Check revenue impact: Estimate $ loss per hour                       │
+│ ☐ DO NOT guess - verify every step                                     │
+│                                                                         │
+│ Incident Number (for tracking): ____________________________________  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+SECOND RESPONSE (During first 15 minutes)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Notify stakeholders of incident                                      │
+│ ☐ Open incident ticket in system                                       │
+│ ☐ Start incident log with timeline                                     │
+│ ☐ Check monitoring dashboard for alerts                                │
+│ ☐ Determine if issue is:                                              │
+│    ☐ Our system fault?                                                │
+│    ☐ Vendor/retailer fault?                                           │
+│    ☐ Third-party service fault (payment, WhatsApp)?                   │
+│    ☐ Customer user error?                                             │
+│ ☐ If you know the fix, ask manager before applying                    │
+│ ☐ If you don't know, escalate now (don't wait)                        │
+│ ☐ Prepare communication for affected users                            │
+│                                                                         │
+│ Root Cause Hypothesis: ________________________________________     │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ONGOING (Every 10 minutes until resolved)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ☐ Log status update and any findings                                   │
+│ ☐ Check if issue is spreading or contained                            │
+│ ☐ Verify any attempted fixes are working                              │
+│ ☐ Communicate status to manager every 15 minutes                       │
+│ ☐ Do NOT attempt major fixes without approval                         │
+│ ☐ Keep affected customers/vendors informed                            │
+│ ☐ Capture all error messages exactly as they appear                   │
+│                                                                         │
+│ Updates made: _____________________________________________________ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+COMMON INCIDENT SCENARIOS
+════════════════════════════════════════════════════════════════════════════
+
+SCENARIO 1: SYSTEM SHOWS "500 ERROR" OR "CONNECTION FAILED"
+═════════════════════════════════════════════════════════════════════════════
+
+What You Do:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Check System Status                                             │
+│         ☐ Go to: [dashboard URL]                                        │
+│         ☐ Look for red alerts or "DOWN" status                          │
+│         ☐ Note any services showing as offline                          │
+│                                                                         │
+│ Step 2: Check Error Logs                                               │
+│         ☐ SSH into monitoring system                                   │
+│         ☐ Run: tail -100 /var/log/app/error.log                        │
+│         ☐ Look for patterns (database error? Redis? Payment?)          │
+│         ☐ Screenshot the errors                                        │
+│                                                                         │
+│ Step 3: Quick Troubleshooting                                          │
+│         ☐ Can you access the database? (Check connection)              │
+│         ☐ Is Redis running? (Check queue status)                       │
+│         ☐ Are payment services responding?                             │
+│         ☐ Any recent deployments? (Check git log)                      │
+│                                                                         │
+│ Step 4: Try These Fixes (in order, only if authorized)                 │
+│                                                                         │
+│   FIX A: Restart the app (low risk)                                    │
+│   Command: systemctl restart whatsapp-app                              │
+│   Time to apply: 2 minutes                                             │
+│   Success rate: 60%                                                    │
+│   ☐ Tried? ☐ Worked? ☐ Still broken?                                 │
+│                                                                         │
+│   FIX B: Clear cache (low risk)                                        │
+│   Command: redis-cli FLUSHDB                                           │
+│   WARNING: This clears all queue data - use carefully!                 │
+│   ☐ Tried? ☐ Worked? ☐ Still broken?                                 │
+│                                                                         │
+│   FIX C: Check database connection (medium risk)                        │
+│   Command: psql -U appuser -d whatsapp_db -c "SELECT 1"               │
+│   If fails: Database is down - escalate immediately                   │
+│   ☐ Tried? ☐ Worked? ☐ Still broken?                                 │
+│                                                                         │
+│ Step 5: If Still Broken                                                │
+│         ☐ STOP - do not try more fixes                                 │
+│         ☐ Escalate to tech lead: ________________________              │
+│         ☐ Provide: Error log screenshots, commands tried, timeline    │
+│                                                                         │
+│ Step 6: Communication                                                  │
+│         ☐ Send message to customers: "We're investigating an issue.   │
+│           Expect 15-30 minute resolution. We apologize for the       │
+│           inconvenience."                                             │
+│         ☐ Update status page every 10 minutes                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Who to Call: ________________________  (Tech Lead)
+
+
+SCENARIO 2: ORDERS ARE STUCK OR NOT BEING DELIVERED
+═════════════════════════════════════════════════════════════════════════════
+
+What You Do:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Verify the Problem                                              │
+│         ☐ How many orders stuck? (exact count)                         │
+│         ☐ How long have they been stuck?                               │
+│         ☐ All orders or just some?                                     │
+│         ☐ Specific retailers or all?                                   │
+│         ☐ Specific vendors or all?                                     │
+│         ☐ Take screenshots of stuck orders in admin panel              │
+│                                                                         │
+│ Step 2: Check System Status                                            │
+│         ☐ System status normal? (Yes / No)                             │
+│         ☐ WhatsApp integration working? (Yes / No)                    │
+│         ☐ Vendor app responsive? (Yes / No)                            │
+│         ☐ Queue system running? (Check monitoring)                     │
+│                                                                         │
+│ Step 3: Check Vendor Status                                            │
+│         ☐ Is the vendor online?                                        │
+│         ☐ Has vendor received WhatsApp message? (Check logs)           │
+│         ☐ Is vendor refusing orders? (Check app)                       │
+│         ☐ Is vendor's account suspended? (Check admin panel)           │
+│                                                                         │
+│ Step 4: Check Queue System                                             │
+│         ☐ SSH to server                                                │
+│         ☐ Run: redis-cli llen "orders:pending"                         │
+│         ☐ If > 10,000: Queue backlog detected                         │
+│         ☐ Run: redis-cli lrange "orders:pending" 0 5                  │
+│         ☐ Check if stuck orders visible in list                        │
+│                                                                         │
+│ Step 5: Try These Fixes (in order)                                     │
+│                                                                         │
+│   FIX A: Re-push order to queue (low risk)                             │
+│   Method: Admin panel → Find order → "Retry"                          │
+│   ☐ Tried? ☐ Worked? ☐ Still stuck?                                  │
+│                                                                         │
+│   FIX B: Manually reassign vendor (low risk)                           │
+│   Method: Admin panel → Order → Select different vendor                │
+│   WARNING: May cause duplicate order with different vendor             │
+│   ☐ Tried? ☐ Worked? ☐ Still stuck?                                  │
+│                                                                         │
+│   FIX C: Restart queue processor (medium risk)                         │
+│   Command: systemctl restart order-queue-worker                        │
+│   Effect: May drop in-progress orders temporarily                      │
+│   ☐ Tried? ☐ Worked? ☐ Still stuck?                                  │
+│                                                                         │
+│ Step 6: If Still Stuck                                                 │
+│         ☐ Use Manual Override Process (see separate SOP)              │
+│         ☐ Document reason for override: ____________________           │
+│         ☐ Get manager approval before proceeding                       │
+│                                                                         │
+│ Step 7: Communication                                                  │
+│         ☐ Notify retailer: "Your order is being processed. Estimated  │
+│           delivery: [time]"                                            │
+│         ☐ Notify vendor: "Please accept/reject order in app"          │
+│         ☐ Set follow-up reminder if not resolved in 10 min            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Who to Call: ________________________  (Queue Specialist)
+
+
+SCENARIO 3: PAYMENT FAILED OR SHOWING AS DECLINED
+═════════════════════════════════════════════════════════════════════════════
+
+What You Do:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Verify Payment Issue                                            │
+│         ☐ Which retailer? ________________________                      │
+│         ☐ How much was charged? $ ________________                     │
+│         ☐ When did it fail? ________________                           │
+│         ☐ Which payment method? (card / wallet / credit line)         │
+│         ☐ Error message (exact text): ________________________________│
+│                                                                         │
+│ Step 2: Check Retailer Account                                         │
+│         ☐ Account status: Active / Suspended / Locked                 │
+│         ☐ Available credit: $ ________________                         │
+│         ☐ Outstanding balance: $ ________________                      │
+│         ☐ Has account hit credit limit? (Yes / No)                     │
+│         ☐ Card on file valid and not expired?                         │
+│                                                                         │
+│ Step 3: Check Payment Processor                                        │
+│         ☐ Payment gateway status page (check online)                   │
+│         ☐ Any outages or incidents? (Yes / No)                         │
+│         ☐ Check recent transaction log in system                       │
+│         ☐ Any pattern of failures? (All failing / Only this one)      │
+│                                                                         │
+│ Step 4: Check System Logs                                              │
+│         ☐ Run: grep "payment_failed" /var/log/app/transaction.log     │
+│         ☐ Look for the specific transaction                           │
+│         ☐ Note the error code from payment processor                  │
+│                                                                         │
+│   Common Error Codes:                                                  │
+│   • Code 001 = Card declined by bank (contact retailer)               │
+│   • Code 002 = Card expired (ask retailer to update card)             │
+│   • Code 003 = Insufficient funds (need credit increase)              │
+│   • Code 004 = Timeout (retry in 1 minute)                           │
+│   • Code 005 = Payment processor error (escalate)                     │
+│                                                                         │
+│ Step 5: Try These Fixes (in order)                                     │
+│                                                                         │
+│   FIX A: Retry payment (low risk)                                      │
+│   Method: Admin panel → Find order → "Retry Payment"                  │
+│   ☐ Tried? ☐ Worked? ☐ Still failing?                               │
+│                                                                         │
+│   FIX B: Manual payment entry (medium risk)                            │
+│   Method: Admin panel → Add payment manually if authorized             │
+│   WARNING: Only for legitimate cases - requires manager approval      │
+│   ☐ Tried? ☐ Worked? ☐ Still failing?                               │
+│                                                                         │
+│ Step 6: If Payment Still Failing                                       │
+│         ☐ Contact retailer by phone                                    │
+│         ☐ Explain: "Your payment was declined. Reason: [code]"        │
+│         ☐ Request: Updated card or payment method                     │
+│         ☐ Process payment again once received                         │
+│         ☐ Do NOT deliver order until payment cleared                  │
+│                                                                         │
+│ Step 7: Escalation Path                                                │
+│         ☐ If payment processor error: Contact payment team             │
+│         ☐ If fraud suspected: Contact security team                   │
+│         ☐ If customer disputes charge: Start dispute resolution       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Who to Call: ________________________  (Payment Lead)
+
+
+SCENARIO 4: VENDOR NOT RESPONDING TO ORDERS
+═════════════════════════════════════════════════════════════════════════════
+
+What You Do:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Verify Vendor Issue                                             │
+│         ☐ Which vendor? ________________________                        │
+│         ☐ How many orders rejected/ignored? ________________           │
+│         ☐ Time span: Since when? ________________                      │
+│         ☐ Vendor status: Online / Offline / Unavailable                │
+│         ☐ Last activity by vendor: ________________                    │
+│                                                                         │
+│ Step 2: Check if Vendor Is Online                                      │
+│         ☐ Check vendor app status (is app open?)                       │
+│         ☐ Check WhatsApp message delivery (sent / delivered / read)   │
+│         ☐ Check phone - is number active? (call if possible)           │
+│         ☐ Check if vendor has temporary "unavailable" status          │
+│                                                                         │
+│ Step 3: Try to Contact Vendor                                          │
+│         ☐ Send WhatsApp: "Hi [name], we have an order. Can you       │
+│           accept it? Please reply."                                   │
+│         ☐ Wait 2 minutes for response                                  │
+│         ☐ No response? Call vendor's phone number                      │
+│         ☐ Vendor explanation: _________________________________      │
+│                                                                         │
+│ Step 4: Check Vendor Performance                                       │
+│         ☐ Acceptance rate this week: ____% (target: > 90%)            │
+│         ☐ Average preparation time: ____ min (target: < 20 min)       │
+│         ☐ Recent complaints: (count) ________________                  │
+│         ☐ Has vendor been warned recently? (Yes / No)                 │
+│         ☐ Any performance issues this month?                          │
+│                                                                         │
+│ Step 5: Actions Based on Vendor Type                                   │
+│                                                                         │
+│   IF VENDOR IS TEMPORARILY OFFLINE:                                    │
+│   ☐ Reassign order to different vendor (if available)                 │
+│   ☐ Notify retailer of vendor change                                  │
+│   ☐ No penalty to vendor                                              │
+│   ☐ Resolution: Complete order with alternate vendor                 │
+│                                                                         │
+│   IF VENDOR IS REFUSING ORDERS:                                        │
+│   ☐ Ask vendor directly (via call): "Why are you rejecting orders?" │
+│   ☐ Document reason: ___________________________________________  │
+│   ☐ If legitimate (too busy, vehicle issue), reassign to other vendor │
+│   ☐ If vendor is being difficult, escalate to manager                │
+│                                                                         │
+│   IF VENDOR APP APPEARS BROKEN:                                        │
+│   ☐ Ask vendor to uninstall and reinstall app                        │
+│   ☐ Send vendor link to app in WhatsApp                              │
+│   ☐ Give 5 minutes to reinstall                                      │
+│   ☐ If still not working, reassign order                             │
+│                                                                         │
+│ Step 6: Long-term Actions                                              │
+│         ☐ If repeated issues: Add vendor to performance watch list   │
+│         ☐ If acceptance < 80%: Send performance warning              │
+│         ☐ If acceptance < 70%: Consider vendor suspension            │
+│         ☐ Document all incidents in vendor file                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Who to Call: ________________________  (Vendor Operations)
+
+
+SCENARIO 5: CUSTOMER COMPLAINING ABOUT DELAY/WRONG ORDER
+═════════════════════════════════════════════════════════════════════════════
+
+What You Do:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Step 1: Listen to Customer                                              │
+│         ☐ What is the specific issue?                                  │
+│         ☐ When was order placed? ________________                      │
+│         ☐ What was expected? ________________________________________│
+│         ☐ What actually happened? ____________________________________│
+│         ☐ How is customer feeling? ☐ Upset ☐ Angry ☐ Calm            │
+│                                                                         │
+│ Step 2: Gather Information                                             │
+│         ☐ Order ID: ________________________                           │
+│         ☐ Order items: ____________________________________________ │
+│         ☐ Delivery address: ________________________________________│
+│         ☐ Retailer: ________________________                           │
+│         ☐ Vendor: ________________________                             │
+│         ☐ Check order timeline in system                              │
+│                                                                         │
+│ Step 3: Categorize the Problem                                         │
+│         ☐ Order wrong/incomplete? (Wrong items / Missing items)        │
+│         ☐ Order very late? (Expected 30 min, took 60+)               │
+│         ☐ Order didn't arrive? (Never received)                       │
+│         ☐ Food quality bad? (Cold / Spoiled / Bad taste)              │
+│         ☐ Delivery staff issue? (Rude / Unsafe / Theft)               │
+│         ☐ Price overcharge? (Charged more than agreed)                │
+│                                                                         │
+│ Step 4: Immediate Actions                                              │
+│         ☐ Apologize: "I sincerely apologize for this experience."    │
+│         ☐ Take responsibility: "This is our fault. Let me help."     │
+│         ☐ DO NOT blame vendor or say "it's not our fault"            │
+│         ☐ Explain what happened (if known)                           │
+│         ☐ Assure resolution within 24 hours                          │
+│                                                                         │
+│ Step 5: Resolution Options (by issue type)                             │
+│                                                                         │
+│   WRONG/INCOMPLETE ITEMS:                                              │
+│   ☐ Offer: Full refund of order                                       │
+│   ☐ OR offer: Free replacement order                                   │
+│   ☐ OR offer: Credit for difference in item cost                      │
+│   ☐ For high-value: Apologize + offer small discount on next order   │
+│                                                                         │
+│   VERY LATE:                                                           │
+│   ☐ If 15+ minutes late: Offer 5% credit                              │
+│   ☐ If 30+ minutes late: Offer 15% credit                             │
+│   ☐ If 45+ minutes late: Offer 25% refund                             │
+│   ☐ If 60+ minutes late: Offer full refund                            │
+│                                                                         │
+│   ORDER DIDN'T ARRIVE:                                                 │
+│   ☐ Offer: Full refund immediately                                    │
+│   ☐ Investigate: Where is order? (driver? vendor? lost?)             │
+│   ☐ Document for investigation                                        │
+│                                                                         │
+│   QUALITY ISSUE:                                                       │
+│   ☐ Offer: Full refund for poor quality                               │
+│   ☐ For minor: Credit 25% of order                                    │
+│   ☐ Ask permission to inspect item (quality control)                  │
+│                                                                         │
+│ Step 6: Document & Process Resolution                                  │
+│         ☐ Record in CRM: Date, issue, resolution                      │
+│         ☐ Process refund/credit in system                             │
+│         ☐ Send confirmation message to customer                       │
+│         ☐ Thank them for feedback                                      │
+│         ☐ Invite them to order again                                  │
+│                                                                         │
+│ Step 7: Investigation (later)                                          │
+│         ☐ Was issue vendor fault? Retailer fault? System fault?      │
+│         ☐ Document in incident log                                    │
+│         ☐ Take action against responsible party if systemic         │
+│         ☐ Prevent same issue happening again                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Who to Call: ________________________  (Customer Support Lead)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+ESCALATION CHAIN
+════════════════════════════════════════════════════════════════════════════
+
+Level 1: Your Manager (first 15 minutes)
+├─ Name: ________________________
+├─ Phone: ________________________
+├─ Email: ________________________
+└─ Available: 24/7 / Business hours (circle one)
+
+Level 2: Technical Lead (if system issue)
+├─ Name: ________________________
+├─ Phone: ________________________
+├─ Email: ________________________
+└─ Available: 24/7 / Business hours (circle one)
+
+Level 3: Finance Manager (if payment issue)
+├─ Name: ________________________
+├─ Phone: ________________________
+├─ Email: ________________________
+└─ Available: 24/7 / Business hours (circle one)
+
+Level 4: Operations Director (if multiple departments affected)
+├─ Name: ________________________
+├─ Phone: ________________________
+├─ Email: ________________________
+└─ Available: 24/7 / Business hours (circle one)
+
+Level 5: CEO (if critical issue affecting business)
+├─ Name: ________________________
+├─ Phone: ________________________
+├─ Email: ________________________
+└─ Available: 24/7 / Business hours (circle one)
+
+ESCALATION RULE:
+├─ 🔴 CRITICAL: Escalate immediately to Level 2+3+4
+├─ 🟠 HIGH: Escalate to Level 2 or 3 within 15 minutes
+├─ 🟡 MEDIUM: Inform Level 1 within 30 minutes
+└─ 🟢 LOW: Report to Level 1 at end of shift
+
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPORTANT REMINDERS
+════════════════════════════════════════════════════════════════════════════
+
+✓ DO:
+├─ Take notes on everything
+├─ Screenshot errors and issues
+├─ Ask for help if uncertain
+├─ Follow escalation procedures
+├─ Document all actions taken
+├─ Keep customer informed
+├─ Get manager approval before major fixes
+└─ Stay calm and professional
+
+✗ DON'T:
+├─ Panic or show stress to customers
+├─ Make promises you can't keep
+├─ Attempt fixes you're not trained for
+├─ Delete any data or logs
+├─ Restart critical systems without approval
+├─ Blame vendors, retailers, or other teams
+├─ Go offline during incident response
+└─ Try to handle critical issues alone
+
+
+═══════════════════════════════════════════════════════════════════════════════
+INCIDENT LOG TEMPLATE
+════════════════════════════════════════════════════════════════════════════
+
+Incident #: ________________  Date: ________________  Time Started: ________
+
+Reported By: ________________________  Priority: 🔴 🟠 🟡 🟢
+
+Description:
+___________________________________________________________________
+
+Actions Taken:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Time          │ Action                │ Result                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ________      │ ___________________   │ ___________________________    │
+│ ________      │ ___________________   │ ___________________________    │
+│ ________      │ ___________________   │ ___________________________    │
+│ ________      │ ___________________   │ ___________________________    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Resolution:
+___________________________________________________________________
+
+Root Cause:
+___________________________________________________________________
+
+Who to Follow Up:
+___________________________________________________________________
+
+Prevention Actions:
+___________________________________________________________________
+
+Approved By: ________________________  Date: ________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Last Updated: January 22, 2026 | VERSION: 1.0
+═══════════════════════════════════════════════════════════════════════════════
