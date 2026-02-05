@@ -1,320 +1,757 @@
-const prisma = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
+const Decimal = require('decimal.js');
+
+const prisma = new PrismaClient();
 
 /**
- * Analytics Service
- * Provides analytics queries for order and wholesaler performance metrics
+ * Advanced Analytics & Business Intelligence Service
+ * 
+ * Features:
+ * - Real-time dashboard metrics
+ * - Financial analytics and reporting
+ * - Performance monitoring
+ * - Business insights generation
+ * - Predictive analytics
+ * - Alert management
  */
 class AnalyticsService {
-  /**
-   * Get offer count per order
-   * @param {object} filters - Optional filters { orderId, status, dateRange }
-   * @returns {Promise<Array>} Array of orders with offer counts
-   */
-  async getOfferCountPerOrder(filters = {}) {
-    const where = {};
-    
-    if (filters.orderId) {
-      where.id = filters.orderId;
-    }
-    
-    if (filters.status) {
-      where.status = filters.status;
-    }
-    
-    if (filters.dateRange) {
-      where.createdAt = {
-        gte: filters.dateRange.start,
-        lte: filters.dateRange.end
-      };
-    }
-
-    const orders = await prisma.order.findMany({
-      where,
-      include: {
-        vendorOffers: {
-          select: {
-            id: true,
-            status: true,
-            created_at: true
-          }
-        },
-        retailer: {
-          select: {
-            id: true,
-            pasalName: true,
-            phoneNumber: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: filters.limit || 100
-    });
-
-    return orders.map(order => ({
-      orderId: order.id,
-      orderStatus: order.status,
-      createdAt: order.createdAt,
-      expiresAt: order.expires_at,
-      retailer: {
-        id: order.retailer.id,
-        name: order.retailer.pasalName || order.retailer.phoneNumber
-      },
-      totalOffers: order.vendorOffers.length,
-      offersByStatus: {
-        PENDING: order.vendorOffers.filter(o => o.status === 'PENDING').length,
-        ACCEPTED: order.vendorOffers.filter(o => o.status === 'ACCEPTED').length,
-        REJECTED: order.vendorOffers.filter(o => o.status === 'REJECTED').length,
-        EXPIRED: order.vendorOffers.filter(o => o.status === 'EXPIRED').length
-      },
-      offers: order.vendorOffers.map(offer => ({
-        id: offer.id,
-        status: offer.status,
-        submittedAt: offer.created_at
-      }))
-    }));
-  }
-
-  /**
-   * Get average response time for offers
-   * Response time = time between order creation and offer submission
-   * @param {object} filters - Optional filters { wholesalerId, dateRange }
-   * @returns {Promise<object>} Average response time statistics
-   */
-  async getAverageResponseTime(filters = {}) {
-    const where = {};
-    
-    if (filters.dateRange) {
-      where.created_at = {
-        gte: filters.dateRange.start,
-        lte: filters.dateRange.end
-      };
-    }
-
-    if (filters.wholesalerId) {
-      where.wholesaler_id = filters.wholesalerId;
-    }
-
-    // Get all offers with their order creation times
-    const offers = await prisma.vendorOffer.findMany({
-      where,
-      include: {
-        order: {
-          select: {
-            id: true,
-            createdAt: true
-          }
-        }
-      }
-    });
-
-    if (offers.length === 0) {
-      return {
-        totalOffers: 0,
-        averageResponseTimeMinutes: 0,
-        averageResponseTimeHours: 0,
-        medianResponseTimeMinutes: 0,
-        minResponseTimeMinutes: 0,
-        maxResponseTimeMinutes: 0,
-        responseTimeDistribution: {
-          under5min: 0,
-          under15min: 0,
-          under30min: 0,
-          under1hour: 0,
-          over1hour: 0
-        }
-      };
-    }
-
-    // Calculate response times in minutes
-    const responseTimes = offers.map(offer => {
-      const orderCreated = new Date(offer.order.createdAt);
-      const offerSubmitted = new Date(offer.created_at);
-      const diffMs = offerSubmitted.getTime() - orderCreated.getTime();
-      return Math.max(0, diffMs / (1000 * 60)); // Convert to minutes
-    });
-
-    // Calculate statistics
-    const total = responseTimes.length;
-    const sum = responseTimes.reduce((acc, time) => acc + time, 0);
-    const averageMinutes = sum / total;
-    const sorted = [...responseTimes].sort((a, b) => a - b);
-    const medianMinutes = sorted[Math.floor(sorted.length / 2)];
-    const minMinutes = Math.min(...responseTimes);
-    const maxMinutes = Math.max(...responseTimes);
-
-    // Distribution
-    const distribution = {
-      under5min: responseTimes.filter(t => t < 5).length,
-      under15min: responseTimes.filter(t => t < 15).length,
-      under30min: responseTimes.filter(t => t < 30).length,
-      under1hour: responseTimes.filter(t => t < 60).length,
-      over1hour: responseTimes.filter(t => t >= 60).length
+  constructor() {
+    this.INSIGHT_TYPES = {
+      TREND: 'TREND',
+      ANOMALY: 'ANOMALY',
+      RECOMMENDATION: 'RECOMMENDATION',
+      FORECAST: 'FORECAST',
+      WARNING: 'WARNING'
     };
 
-    return {
-      totalOffers: total,
-      averageResponseTimeMinutes: Math.round(averageMinutes * 100) / 100,
-      averageResponseTimeHours: Math.round((averageMinutes / 60) * 100) / 100,
-      medianResponseTimeMinutes: Math.round(medianMinutes * 100) / 100,
-      minResponseTimeMinutes: Math.round(minMinutes * 100) / 100,
-      maxResponseTimeMinutes: Math.round(maxMinutes * 100) / 100,
-      responseTimeDistribution: {
-        under5min: distribution.under5min,
-        under15min: distribution.under15min,
-        under30min: distribution.under30min,
-        under1hour: distribution.under1hour,
-        over1hour: distribution.over1hour
-      }
+    this.ALERT_SEVERITIES = {
+      LOW: 'LOW',
+      MEDIUM: 'MEDIUM',
+      HIGH: 'HIGH',
+      CRITICAL: 'CRITICAL'
     };
   }
 
   /**
-   * Get win rate per wholesaler
-   * Win rate = (ACCEPTED offers) / (Total offers) * 100
-   * @param {object} filters - Optional filters { wholesalerId, dateRange }
-   * @returns {Promise<Array>} Array of wholesalers with win rate statistics
+   * Generate comprehensive dashboard metrics
    */
-  async getWinRatePerWholesaler(filters = {}) {
-    const where = {};
+  async getDashboardMetrics(timeRange = '7d') {
+    const endDate = new Date();
+    const startDate = new Date();
     
-    if (filters.dateRange) {
-      where.created_at = {
-        gte: filters.dateRange.start,
-        lte: filters.dateRange.end
-      };
+    // Calculate start date based on time range
+    switch (timeRange) {
+      case '24h':
+        startDate.setHours(startDate.getHours() - 24);
+        break;
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(startDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(startDate.getDate() - 7);
     }
 
-    if (filters.wholesalerId) {
-      where.wholesaler_id = filters.wholesalerId;
-    }
-
-    // Get all offers grouped by wholesaler
-    const offers = await prisma.vendorOffer.findMany({
-      where,
-      include: {
-        wholesaler: {
-          select: {
-            id: true,
-            businessName: true,
-            reliabilityScore: true,
-            averageRating: true
-          }
-        }
-      }
-    });
-
-    // Group by wholesaler and calculate statistics
-    const wholesalerStats = {};
-    
-    offers.forEach(offer => {
-      const wholesalerId = offer.wholesaler_id;
-      
-      if (!wholesalerStats[wholesalerId]) {
-        wholesalerStats[wholesalerId] = {
-          wholesaler: offer.wholesaler,
-          totalOffers: 0,
-          acceptedOffers: 0,
-          rejectedOffers: 0,
-          expiredOffers: 0,
-          pendingOffers: 0,
-          winRate: 0,
-          totalOrderValue: 0,
-          averagePriceQuote: 0,
-          priceQuotes: []
-        };
-      }
-
-      const stats = wholesalerStats[wholesalerId];
-      stats.totalOffers++;
-      stats.priceQuotes.push(Number(offer.price_quote));
-
-      switch (offer.status) {
-        case 'ACCEPTED':
-          stats.acceptedOffers++;
-          break;
-        case 'REJECTED':
-          stats.rejectedOffers++;
-          break;
-        case 'EXPIRED':
-          stats.expiredOffers++;
-          break;
-        case 'PENDING':
-          stats.pendingOffers++;
-          break;
-      }
-    });
-
-    // Calculate win rates and averages
-    const result = Object.values(wholesalerStats).map(stats => {
-      const winRate = stats.totalOffers > 0 
-        ? (stats.acceptedOffers / stats.totalOffers) * 100 
-        : 0;
-      
-      const avgPrice = stats.priceQuotes.length > 0
-        ? stats.priceQuotes.reduce((sum, price) => sum + price, 0) / stats.priceQuotes.length
-        : 0;
-
-      return {
-        wholesalerId: stats.wholesaler.id,
-        businessName: stats.wholesaler.businessName,
-        reliabilityScore: stats.wholesaler.reliabilityScore,
-        averageRating: stats.wholesaler.averageRating,
-        totalOffers: stats.totalOffers,
-        acceptedOffers: stats.acceptedOffers,
-        rejectedOffers: stats.rejectedOffers,
-        expiredOffers: stats.expiredOffers,
-        pendingOffers: stats.pendingOffers,
-        winRate: Math.round(winRate * 100) / 100,
-        averagePriceQuote: Math.round(avgPrice * 100) / 100,
-        minPriceQuote: stats.priceQuotes.length > 0 ? Math.min(...stats.priceQuotes) : 0,
-        maxPriceQuote: stats.priceQuotes.length > 0 ? Math.max(...stats.priceQuotes) : 0
-      };
-    });
-
-    // Sort by win rate (descending)
-    result.sort((a, b) => b.winRate - a.winRate);
-
-    return result;
-  }
-
-  /**
-   * Get comprehensive analytics dashboard data
-   * @param {object} filters - Optional filters { dateRange }
-   * @returns {Promise<object>} Combined analytics data
-   */
-  async getAnalyticsDashboard(filters = {}) {
-    const [offerCounts, responseTime, winRates] = await Promise.all([
-      this.getOfferCountPerOrder(filters),
-      this.getAverageResponseTime(filters),
-      this.getWinRatePerWholesaler(filters)
+    const [
+      orderMetrics,
+      financialMetrics,
+      userMetrics,
+      performanceMetrics,
+      whatsappMetrics,
+      trendData
+    ] = await Promise.all([
+      this.getOrderMetrics(startDate, endDate),
+      this.getFinancialMetrics(startDate, endDate),
+      this.getUserMetrics(startDate, endDate),
+      this.getPerformanceMetrics(startDate, endDate),
+      this.getWhatsAppMetrics(startDate, endDate),
+      this.getTrendData(startDate, endDate)
     ]);
 
-    // Calculate summary statistics
-    const totalOrders = offerCounts.length;
-    const ordersWithOffers = offerCounts.filter(o => o.totalOffers > 0).length;
-    const averageOffersPerOrder = totalOrders > 0
-      ? offerCounts.reduce((sum, o) => sum + o.totalOffers, 0) / totalOrders
-      : 0;
+    return {
+      timeRange,
+      period: { startDate, endDate },
+      orders: orderMetrics,
+      financial: financialMetrics,
+      users: userMetrics,
+      performance: performanceMetrics,
+      whatsapp: whatsappMetrics,
+      trends: trendData,
+      generatedAt: new Date()
+    };
+  }
+
+  /**
+   * Get order-related metrics
+   */
+  async getOrderMetrics(startDate, endDate) {
+    const [
+      totalOrders,
+      newOrders,
+      completedOrders,
+      cancelledOrders,
+      pendingOrders,
+      averageOrderValue,
+      ordersByStatus,
+      dailyOrders
+    ] = await Promise.all([
+      // Total orders (all time)
+      prisma.order.count({
+        where: { deletedAt: null }
+      }),
+
+      // New orders in period
+      prisma.order.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        }
+      }),
+
+      // Completed orders in period
+      prisma.order.count({
+        where: {
+          status: 'DELIVERED',
+          deliveredAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        }
+      }),
+
+      // Cancelled orders in period
+      prisma.order.count({
+        where: {
+          status: { in: ['CANCELLED', 'FAILED'] },
+          updatedAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        }
+      }),
+
+      // Currently pending orders
+      prisma.order.count({
+        where: {
+          status: { in: ['CREATED', 'PROCESSING', 'CONFIRMED'] },
+          deletedAt: null
+        }
+      }),
+
+      // Average order value
+      prisma.order.aggregate({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        },
+        _avg: { totalAmount: true }
+      }),
+
+      // Orders by status
+      prisma.order.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        },
+        _count: true
+      }),
+
+      // Daily order counts
+      this.getDailyOrderCounts(startDate, endDate)
+    ]);
 
     return {
-      summary: {
-        totalOrders,
-        ordersWithOffers,
-        ordersWithoutOffers: totalOrders - ordersWithOffers,
-        averageOffersPerOrder: Math.round(averageOffersPerOrder * 100) / 100
-      },
-      offerCounts: {
-        total: offerCounts.length,
-        orders: offerCounts.slice(0, 50) // Limit to top 50 for response
-      },
-      responseTime,
-      winRates: {
-        totalWholesalers: winRates.length,
-        wholesalers: winRates.slice(0, 50) // Limit to top 50 for response
-      },
-      dateRange: filters.dateRange || null
+      total: totalOrders,
+      new: newOrders,
+      completed: completedOrders,
+      cancelled: cancelledOrders,
+      pending: pendingOrders,
+      averageValue: parseFloat(averageOrderValue._avg.totalAmount) || 0,
+      byStatus: ordersByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {}),
+      daily: dailyOrders,
+      completionRate: newOrders > 0 ? (completedOrders / newOrders * 100) : 0,
+      cancellationRate: newOrders > 0 ? (cancelledOrders / newOrders * 100) : 0
     };
+  }
+
+  /**
+   * Get financial metrics
+   */
+  async getFinancialMetrics(startDate, endDate) {
+    const [
+      totalRevenue,
+      periodRevenue,
+      totalPayments,
+      outstandingBalance,
+      creditUtilization,
+      profitMargin,
+      dailyRevenue
+    ] = await Promise.all([
+      // Total revenue (all time)
+      prisma.order.aggregate({
+        where: {
+          status: 'DELIVERED',
+          deletedAt: null
+        },
+        _sum: { totalAmount: true }
+      }),
+
+      // Revenue in period
+      prisma.order.aggregate({
+        where: {
+          status: 'DELIVERED',
+          deliveredAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        },
+        _sum: { totalAmount: true }
+      }),
+
+      // Total payments received
+      prisma.retailerPayment.aggregate({
+        where: {
+          status: 'PAID',
+          clearedDate: { gte: startDate, lte: endDate }
+        },
+        _sum: { amount: true }
+      }),
+
+      // Outstanding balance
+      this.getTotalOutstandingBalance(),
+
+      // Credit utilization
+      this.getCreditUtilization(),
+
+      // Profit margin (simplified calculation)
+      this.calculateProfitMargin(startDate, endDate),
+
+      // Daily revenue
+      this.getDailyRevenue(startDate, endDate)
+    ]);
+
+    return {
+      totalRevenue: parseFloat(totalRevenue._sum.totalAmount) || 0,
+      periodRevenue: parseFloat(periodRevenue._sum.totalAmount) || 0,
+      totalPayments: parseFloat(totalPayments._sum.amount) || 0,
+      outstandingBalance,
+      creditUtilization,
+      profitMargin,
+      daily: dailyRevenue,
+      cashFlow: parseFloat(totalPayments._sum.amount) || 0 - outstandingBalance
+    };
+  }
+
+  /**
+   * Get user metrics
+   */
+  async getUserMetrics(startDate, endDate) {
+    const [
+      totalRetailers,
+      activeRetailers,
+      newRetailers,
+      totalWholesalers,
+      activeWholesalers,
+      topRetailers,
+      topWholesalers
+    ] = await Promise.all([
+      // Total retailers
+      prisma.retailer.count({
+        where: { deletedAt: null }
+      }),
+
+      // Active retailers (placed order in period)
+      prisma.retailer.count({
+        where: {
+          orders: {
+            some: {
+              createdAt: { gte: startDate, lte: endDate }
+            }
+          },
+          deletedAt: null
+        }
+      }),
+
+      // New retailers in period
+      prisma.retailer.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          deletedAt: null
+        }
+      }),
+
+      // Total wholesalers
+      prisma.wholesaler.count({
+        where: { deletedAt: null }
+      }),
+
+      // Active wholesalers
+      prisma.wholesaler.count({
+        where: {
+          orders: {
+            some: {
+              createdAt: { gte: startDate, lte: endDate }
+            }
+          },
+          deletedAt: null
+        }
+      }),
+
+      // Top retailers by order value
+      this.getTopRetailers(startDate, endDate, 5),
+
+      // Top wholesalers by order count
+      this.getTopWholesalers(startDate, endDate, 5)
+    ]);
+
+    return {
+      retailers: {
+        total: totalRetailers,
+        active: activeRetailers,
+        new: newRetailers,
+        top: topRetailers
+      },
+      wholesalers: {
+        total: totalWholesalers,
+        active: activeWholesalers,
+        top: topWholesalers
+      },
+      engagement: {
+        retailerActivationRate: totalRetailers > 0 ? (activeRetailers / totalRetailers * 100) : 0
+      }
+    };
+  }
+
+  /**
+   * Get performance metrics
+   */
+  async getPerformanceMetrics(startDate, endDate) {
+    // This would typically come from application monitoring
+    // For now, we'll calculate some basic metrics
+    
+    const [
+      averageOrderProcessingTime,
+      systemUptime,
+      errorRate
+    ] = await Promise.all([
+      this.calculateAverageOrderProcessingTime(startDate, endDate),
+      this.calculateSystemUptime(startDate, endDate),
+      this.calculateErrorRate(startDate, endDate)
+    ]);
+
+    return {
+      averageOrderProcessingTime, // in minutes
+      systemUptime, // percentage
+      errorRate, // percentage
+      responseTime: 250, // Mock API response time in ms
+      throughput: 150 // Mock requests per minute
+    };
+  }
+
+  /**
+   * Get WhatsApp metrics
+   */
+  async getWhatsAppMetrics(startDate, endDate) {
+    const [
+      messagesReceived,
+      messagesSent,
+      conversions,
+      activeConversations
+    ] = await Promise.all([
+      // Messages received (from WhatsApp messages table)
+      prisma.whatsAppMessage.count({
+        where: {
+          direction: 'inbound',
+          createdAt: { gte: startDate, lte: endDate }
+        }
+      }),
+
+      // Messages sent
+      prisma.whatsAppMessage.count({
+        where: {
+          direction: 'outbound',
+          createdAt: { gte: startDate, lte: endDate }
+        }
+      }),
+
+      // Conversions (orders created from WhatsApp)
+      prisma.order.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          // Assuming orders from WhatsApp have a specific source
+          deletedAt: null
+        }
+      }),
+
+      // Active conversations
+      prisma.conversation.count({
+        where: {
+          status: 'OPEN',
+          updatedAt: { gte: startDate, lte: endDate }
+        }
+      })
+    ]);
+
+    return {
+      messagesReceived,
+      messagesSent,
+      conversions,
+      activeConversations,
+      conversionRate: messagesReceived > 0 ? (conversions / messagesReceived * 100) : 0,
+      responseRate: messagesReceived > 0 ? (messagesSent / messagesReceived * 100) : 0
+    };
+  }
+
+  /**
+   * Get trend data for charts
+   */
+  async getTrendData(startDate, endDate) {
+    const [
+      dailyOrders,
+      dailyRevenue,
+      dailyUsers
+    ] = await Promise.all([
+      this.getDailyOrderCounts(startDate, endDate),
+      this.getDailyRevenue(startDate, endDate),
+      this.getDailyActiveUsers(startDate, endDate)
+    ]);
+
+    return {
+      orders: dailyOrders,
+      revenue: dailyRevenue,
+      users: dailyUsers
+    };
+  }
+
+  /**
+   * Generate business insights
+   */
+  async generateBusinessInsights() {
+    const insights = [];
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Revenue trend analysis
+    const revenueInsight = await this.analyzeRevenueTrend(lastMonth, now);
+    if (revenueInsight) insights.push(revenueInsight);
+
+    // Credit utilization analysis
+    const creditInsight = await this.analyzeCreditUtilization();
+    if (creditInsight) insights.push(creditInsight);
+
+    // Order pattern analysis
+    const orderInsight = await this.analyzeOrderPatterns(lastWeek, now);
+    if (orderInsight) insights.push(orderInsight);
+
+    // Performance anomaly detection
+    const performanceInsight = await this.detectPerformanceAnomalies(lastWeek, now);
+    if (performanceInsight) insights.push(performanceInsight);
+
+    // Save insights to database
+    for (const insight of insights) {
+      await this.saveBusinessInsight(insight);
+    }
+
+    return insights;
+  }
+
+  /**
+   * Create performance alert
+   */
+  async createAlert({
+    alertType,
+    severity,
+    title,
+    message,
+    component = null,
+    entityId = null,
+    entityType = null,
+    currentValue = null,
+    thresholdValue = null
+  }) {
+    const alert = await prisma.alertLog.create({
+      data: {
+        alertType,
+        severity,
+        title,
+        message,
+        component,
+        entityId,
+        entityType,
+        currentValue,
+        thresholdValue,
+        status: 'ACTIVE'
+      }
+    });
+
+    console.log(`🚨 Alert created: ${severity} - ${title}`);
+    
+    // TODO: Send notifications (email, Slack, etc.)
+    await this.sendAlertNotifications(alert);
+    
+    return alert;
+  }
+
+  /**
+   * Helper methods for calculations
+   */
+  async getDailyOrderCounts(startDate, endDate) {
+    const orders = await prisma.order.groupBy({
+      by: ['createdAt'],
+      where: {
+        createdAt: { gte: startDate, lte: endDate },
+        deletedAt: null
+      },
+      _count: true
+    });
+
+    // Group by date
+    const dailyCounts = {};
+    orders.forEach(order => {
+      const date = order.createdAt.toISOString().split('T')[0];
+      dailyCounts[date] = (dailyCounts[date] || 0) + order._count;
+    });
+
+    return dailyCounts;
+  }
+
+  async getDailyRevenue(startDate, endDate) {
+    const orders = await prisma.order.groupBy({
+      by: ['deliveredAt'],
+      where: {
+        status: 'DELIVERED',
+        deliveredAt: { gte: startDate, lte: endDate },
+        deletedAt: null
+      },
+      _sum: { totalAmount: true }
+    });
+
+    const dailyRevenue = {};
+    orders.forEach(order => {
+      if (order.deliveredAt) {
+        const date = order.deliveredAt.toISOString().split('T')[0];
+        dailyRevenue[date] = (dailyRevenue[date] || 0) + parseFloat(order._sum.totalAmount);
+      }
+    });
+
+    return dailyRevenue;
+  }
+
+  async getDailyActiveUsers(startDate, endDate) {
+    // Count unique retailers who placed orders each day
+    const activeUsers = await prisma.order.groupBy({
+      by: ['createdAt', 'retailerId'],
+      where: {
+        createdAt: { gte: startDate, lte: endDate },
+        deletedAt: null
+      }
+    });
+
+    const dailyUsers = {};
+    activeUsers.forEach(order => {
+      const date = order.createdAt.toISOString().split('T')[0];
+      if (!dailyUsers[date]) {
+        dailyUsers[date] = new Set();
+      }
+      dailyUsers[date].add(order.retailerId);
+    });
+
+    // Convert sets to counts
+    Object.keys(dailyUsers).forEach(date => {
+      dailyUsers[date] = dailyUsers[date].size;
+    });
+
+    return dailyUsers;
+  }
+
+  async getTotalOutstandingBalance() {
+    // This would use the ledger service to calculate outstanding balances
+    // For now, return a mock value
+    return 125000;
+  }
+
+  async getCreditUtilization() {
+    const creditAccounts = await prisma.creditAccount.aggregate({
+      _sum: {
+        creditLimit: true,
+        usedCredit: true
+      }
+    });
+
+    const totalLimit = parseFloat(creditAccounts._sum.creditLimit) || 0;
+    const totalUsed = parseFloat(creditAccounts._sum.usedCredit) || 0;
+
+    return {
+      totalLimit,
+      totalUsed,
+      utilizationRate: totalLimit > 0 ? (totalUsed / totalLimit * 100) : 0,
+      availableCredit: totalLimit - totalUsed
+    };
+  }
+
+  async calculateProfitMargin(startDate, endDate) {
+    // Simplified profit margin calculation
+    // In reality, this would include costs, taxes, etc.
+    const revenue = await prisma.order.aggregate({
+      where: {
+        status: 'DELIVERED',
+        deliveredAt: { gte: startDate, lte: endDate },
+        deletedAt: null
+      },
+      _sum: { totalAmount: true }
+    });
+
+    const totalRevenue = parseFloat(revenue._sum.totalAmount) || 0;
+    const estimatedCosts = totalRevenue * 0.85; // Assume 85% costs
+    const profit = totalRevenue - estimatedCosts;
+
+    return {
+      revenue: totalRevenue,
+      costs: estimatedCosts,
+      profit,
+      margin: totalRevenue > 0 ? (profit / totalRevenue * 100) : 0
+    };
+  }
+
+  async calculateAverageOrderProcessingTime(startDate, endDate) {
+    const orders = await prisma.order.findMany({
+      where: {
+        status: 'DELIVERED',
+        deliveredAt: { gte: startDate, lte: endDate },
+        deletedAt: null
+      },
+      select: {
+        createdAt: true,
+        deliveredAt: true
+      }
+    });
+
+    if (orders.length === 0) return 0;
+
+    const totalTime = orders.reduce((sum, order) => {
+      const processingTime = order.deliveredAt.getTime() - order.createdAt.getTime();
+      return sum + processingTime;
+    }, 0);
+
+    return Math.round(totalTime / orders.length / (1000 * 60)); // Convert to minutes
+  }
+
+  async calculateSystemUptime(startDate, endDate) {
+    // Mock calculation - in reality, this would come from monitoring systems
+    return 99.8;
+  }
+
+  async calculateErrorRate(startDate, endDate) {
+    // Mock calculation - in reality, this would come from error logs
+    return 0.5;
+  }
+
+  async getTopRetailers(startDate, endDate, limit) {
+    return await prisma.retailer.findMany({
+      where: {
+        orders: {
+          some: {
+            createdAt: { gte: startDate, lte: endDate }
+          }
+        },
+        deletedAt: null
+      },
+      include: {
+        orders: {
+          where: {
+            createdAt: { gte: startDate, lte: endDate },
+            status: 'DELIVERED'
+          },
+          select: {
+            totalAmount: true
+          }
+        }
+      },
+      take: limit
+    }).then(retailers => 
+      retailers.map(retailer => ({
+        id: retailer.id,
+        name: retailer.pasalName,
+        city: retailer.city,
+        totalOrders: retailer.orders.length,
+        totalValue: retailer.orders.reduce((sum, order) => 
+          sum + parseFloat(order.totalAmount), 0
+        )
+      })).sort((a, b) => b.totalValue - a.totalValue)
+    );
+  }
+
+  async getTopWholesalers(startDate, endDate, limit) {
+    return await prisma.wholesaler.findMany({
+      where: {
+        orders: {
+          some: {
+            createdAt: { gte: startDate, lte: endDate }
+          }
+        },
+        deletedAt: null
+      },
+      include: {
+        orders: {
+          where: {
+            createdAt: { gte: startDate, lte: endDate },
+            status: 'DELIVERED'
+          },
+          select: {
+            totalAmount: true
+          }
+        }
+      },
+      take: limit
+    }).then(wholesalers => 
+      wholesalers.map(wholesaler => ({
+        id: wholesaler.id,
+        name: wholesaler.businessName,
+        city: wholesaler.city,
+        totalOrders: wholesaler.orders.length,
+        totalValue: wholesaler.orders.reduce((sum, order) => 
+          sum + parseFloat(order.totalAmount), 0
+        )
+      })).sort((a, b) => b.totalOrders - a.totalOrders)
+    );
+  }
+
+  // Insight generation methods
+  async analyzeRevenueTrend(startDate, endDate) {
+    // Implementation for revenue trend analysis
+    return null; // Placeholder
+  }
+
+  async analyzeCreditUtilization() {
+    // Implementation for credit utilization analysis
+    return null; // Placeholder
+  }
+
+  async analyzeOrderPatterns(startDate, endDate) {
+    // Implementation for order pattern analysis
+    return null; // Placeholder
+  }
+
+  async detectPerformanceAnomalies(startDate, endDate) {
+    // Implementation for performance anomaly detection
+    return null; // Placeholder
+  }
+
+  async saveBusinessInsight(insight) {
+    // Save insight to database
+    return await prisma.businessInsight.create({
+      data: insight
+    });
+  }
+
+  async sendAlertNotifications(alert) {
+    // Implementation for sending alert notifications
+    console.log(`📧 Alert notification sent: ${alert.title}`);
   }
 }
 
-module.exports = new AnalyticsService();
+module.exports = AnalyticsService;

@@ -1,0 +1,279 @@
+// ============================================================================
+// ADMIN DASHBOARD SCHEMA ADDITIONS
+// Enhanced models for comprehensive admin dashboard functionality
+// ============================================================================
+
+// Enhanced Admin Audit Log with more detailed tracking
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminId     String
+  action      String   // RETAILER_FROZEN, VENDOR_PAUSED, ORDER_REASSIGNED, etc.
+  resource    String?  // ORDER, RETAILER, VENDOR, CREDIT, etc.
+  targetId    String?  // ID of the affected resource
+  success     Boolean  @default(true)
+  requestId   String?  // For request correlation
+  method      String?  // HTTP method
+  path        String?  // API endpoint path
+  ipAddress   String?
+  userAgent   String?
+  duration    Int?     // Request duration in ms
+  statusCode  Int?     // HTTP status code
+  reason      String?  // Reason for the action
+  metadata    Json?    // Additional context data
+  createdAt   DateTime @default(now())
+
+  // Relations
+  admin       Admin    @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetId, createdAt])
+  @@index([success, createdAt])
+  @@map("admin_audit_logs")
+}
+
+// API Keys for admin authentication
+model ApiKey {
+  id          String    @id @default(cuid())
+  adminId     String
+  keyHash     String    @unique // SHA-256 hash of the actual key
+  scope       String    @default("admin") // admin, read_only, write, webhook
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  admin       Admin     @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([keyHash])
+  @@index([scope])
+  @@map("api_keys")
+}
+
+// Dashboard Alerts for risk monitoring
+model DashboardAlert {
+  id          String    @id @default(cuid())
+  category    String    // CREDIT, ORDER, VENDOR, SYSTEM
+  severity    String    // CRITICAL, HIGH, MEDIUM, LOW
+  title       String
+  message     String
+  targetId    String?   // Related resource ID
+  isActive    Boolean   @default(true)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  notes       String?
+  metadata    Json?     // Additional alert data
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  acknowledgedByAdmin Admin? @relation(fields: [acknowledgedBy], references: [id])
+
+  @@index([category, severity, isActive])
+  @@index([createdAt])
+  @@index([targetId])
+  @@map("dashboard_alerts")
+}
+
+// Performance Metrics for monitoring
+model PerformanceMetric {
+  id          String   @id @default(cuid())
+  metricName  String   // order_processing_time, credit_check_duration, etc.
+  metricType  String   // gauge, counter, histogram
+  value       Float
+  labels      Json?    // Additional metric labels
+  timestamp   DateTime @default(now())
+
+  @@index([metricName, timestamp])
+  @@index([timestamp])
+  @@map("performance_metrics")
+}
+
+// System Health Status
+model SystemHealth {
+  id          String   @id @default(cuid())
+  component   String   // database, redis, webhook_queue, etc.
+  status      String   // healthy, degraded, unhealthy
+  message     String?
+  responseTime Float?  // in milliseconds
+  metadata    Json?
+  checkedAt   DateTime @default(now())
+
+  @@index([component, checkedAt])
+  @@index([status, checkedAt])
+  @@map("system_health")
+}
+
+// Enhanced Retailer model with suspension tracking
+model RetailerSuspension {
+  id            String    @id @default(cuid())
+  retailerId    String
+  suspendedBy   String    // Admin ID
+  reason        String
+  suspendedAt   DateTime  @default(now())
+  suspendedUntil DateTime?
+  isActive      Boolean   @default(true)
+  liftedAt      DateTime?
+  liftedBy      String?   // Admin ID who lifted suspension
+  liftReason    String?
+
+  // Relations
+  retailer      Retailer  @relation(fields: [retailerId], references: [id])
+  suspendedByAdmin Admin  @relation("SuspendedBy", fields: [suspendedBy], references: [id])
+  liftedByAdmin Admin?    @relation("LiftedBy", fields: [liftedBy], references: [id])
+
+  @@index([retailerId, isActive])
+  @@index([suspendedBy])
+  @@map("retailer_suspensions")
+}
+
+// Enhanced Wholesaler model with suspension tracking
+model WholesalerSuspension {
+  id            String      @id @default(cuid())
+  wholesalerId  String
+  suspendedBy   String      // Admin ID
+  reason        String
+  suspendedAt   DateTime    @default(now())
+  suspendedUntil DateTime?
+  isActive      Boolean     @default(true)
+  liftedAt      DateTime?
+  liftedBy      String?     // Admin ID who lifted suspension
+  liftReason    String?
+
+  // Relations
+  wholesaler    Wholesaler  @relation(fields: [wholesalerId], references: [id])
+  suspendedByAdmin Admin    @relation("WholesalerSuspendedBy", fields: [suspendedBy], references: [id])
+  liftedByAdmin Admin?      @relation("WholesalerLiftedBy", fields: [liftedBy], references: [id])
+
+  @@index([wholesalerId, isActive])
+  @@index([suspendedBy])
+  @@map("wholesaler_suspensions")
+}
+
+// Order Reassignment History
+model OrderReassignment {
+  id                String    @id @default(cuid())
+  orderId           String
+  previousVendorId  String?
+  newVendorId       String
+  reassignedBy      String    // Admin ID
+  reason            String
+  reassignedAt      DateTime  @default(now())
+  metadata          Json?     // Additional context
+
+  // Relations
+  order             Order     @relation(fields: [orderId], references: [id])
+  previousVendor    Wholesaler? @relation("PreviousVendor", fields: [previousVendorId], references: [id])
+  newVendor         Wholesaler  @relation("NewVendor", fields: [newVendorId], references: [id])
+  reassignedByAdmin Admin     @relation(fields: [reassignedBy], references: [id])
+
+  @@index([orderId])
+  @@index([reassignedBy])
+  @@index([reassignedAt])
+  @@map("order_reassignments")
+}
+
+// Credit Limit Adjustments History
+model CreditLimitAdjustment {
+  id              String        @id @default(cuid())
+  retailerId      String
+  wholesalerId    String
+  previousLimit   Decimal       @db.Decimal(10, 2)
+  newLimit        Decimal       @db.Decimal(10, 2)
+  adjustedBy      String        // Admin ID
+  reason          String
+  adjustedAt      DateTime      @default(now())
+  metadata        Json?
+
+  // Relations
+  retailer        Retailer      @relation(fields: [retailerId], references: [id])
+  wholesaler      Wholesaler    @relation(fields: [wholesalerId], references: [id])
+  adjustedByAdmin Admin         @relation(fields: [adjustedBy], references: [id])
+
+  @@index([retailerId, wholesalerId])
+  @@index([adjustedBy])
+  @@index([adjustedAt])
+  @@map("credit_limit_adjustments")
+}
+
+// Dashboard User Sessions for tracking admin activity
+model AdminSession {
+  id          String    @id @default(cuid())
+  adminId     String
+  sessionId   String    @unique
+  ipAddress   String?
+  userAgent   String?
+  loginAt     DateTime  @default(now())
+  lastActivity DateTime @default(now())
+  logoutAt    DateTime?
+  isActive    Boolean   @default(true)
+
+  // Relations
+  admin       Admin     @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, isActive])
+  @@index([sessionId])
+  @@index([lastActivity])
+  @@map("admin_sessions")
+}
+
+// Add relations to existing models
+model Admin {
+  // ... existing fields ...
+  
+  // New relations for dashboard
+  auditLogs             AdminAuditLog[]
+  apiKeys               ApiKey[]
+  acknowledgedAlerts    DashboardAlert[]
+  suspendedRetailers    RetailerSuspension[] @relation("SuspendedBy")
+  liftedRetailerSuspensions RetailerSuspension[] @relation("LiftedBy")
+  suspendedWholesalers  WholesalerSuspension[] @relation("WholesalerSuspendedBy")
+  liftedWholesalerSuspensions WholesalerSuspension[] @relation("WholesalerLiftedBy")
+  orderReassignments    OrderReassignment[]
+  creditAdjustments     CreditLimitAdjustment[]
+  sessions              AdminSession[]
+}
+
+model Retailer {
+  // ... existing fields ...
+  
+  // Enhanced suspension tracking
+  suspensions           RetailerSuspension[]
+  creditAdjustments     CreditLimitAdjustment[]
+  
+  // Add suspension fields to main model
+  suspendedAt           DateTime?
+  suspendedUntil        DateTime?
+  suspensionReason      String?
+}
+
+model Wholesaler {
+  // ... existing fields ...
+  
+  // Enhanced suspension tracking
+  suspensions           WholesalerSuspension[]
+  creditAdjustments     CreditLimitAdjustment[]
+  previousOrderAssignments OrderReassignment[] @relation("PreviousVendor")
+  newOrderAssignments   OrderReassignment[] @relation("NewVendor")
+  
+  // Add suspension fields to main model
+  suspendedAt           DateTime?
+  suspendedUntil        DateTime?
+  suspensionReason      String?
+}
+
+model Order {
+  // ... existing fields ...
+  
+  // Order reassignment tracking
+  reassignments         OrderReassignment[]
+  
+  // Enhanced priority and SLA tracking
+  priority              String?   @default("MEDIUM") // HIGH, MEDIUM, LOW
+  slaDeadline           DateTime?
+  escalatedAt           DateTime?
+  escalationReason      String?
+}

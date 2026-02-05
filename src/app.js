@@ -27,7 +27,17 @@ try {
 }
 
 app.use(securityHeaders);
-app.use(cors());
+// CORS Configuration
+const corsOptions = {
+  origin: config.env === 'production'
+    ? process.env.CORS_ORIGIN
+    : '*', // Allow all in development/test
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 app.use(compress);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -93,6 +103,8 @@ try {
   app.use('/api/v1/admin', apiLimiter, require('./routes/admin.routes'));
   app.use('/api/v1/admin-dashboard', require('./routes/adminDashboard.routes'));
   app.use('/api/v1/admin/retailer-dashboard', require('./routes/admin-retailer-dashboard.routes'));
+  app.use('/api/v1/dashboard', apiLimiter, require('./routes/dashboard.routes'));
+  app.use('/api/v1/launch-control', apiLimiter, require('./routes/launch-control.routes'));
   app.use('/api/v1/wholesalers', require('./routes/wholesaler.routes'));
   app.use('/api/v1/vendor-offers', require('./routes/vendorOffer.routes'));
   app.use('/api/v1/credit', require('./routes/credit.routes'));

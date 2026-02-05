@@ -1,0 +1,95 @@
+// =============================================================================
+// LAUNCH CONTROL FLAGS SCHEMA
+// Growth & Risk Engineering - Database Schema
+// =============================================================================
+
+model LaunchControlFlag {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  
+  // Support different value types
+  booleanValue Boolean?
+  integerValue Int?
+  stringValue  String?
+  valueType    String   // 'boolean', 'integer', 'string'
+  
+  // Metadata
+  description  String?
+  category     String?  // 'limits', 'features', 'emergency', 'monitoring'
+  
+  // Audit trail
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String   @default("system")
+  updatedBy    String?
+  
+  // Change history
+  changeHistory LaunchControlFlagHistory[]
+  
+  @@map("launch_control_flags")
+}
+
+model LaunchControlFlagHistory {
+  id           String   @id @default(cuid())
+  flagId       String
+  flag         LaunchControlFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  
+  // Previous and new values
+  previousBooleanValue Boolean?
+  previousIntegerValue Int?
+  previousStringValue  String?
+  
+  newBooleanValue Boolean?
+  newIntegerValue Int?
+  newStringValue  String?
+  
+  // Change metadata
+  changedAt    DateTime @default(now())
+  changedBy    String
+  reason       String?
+  ipAddress    String?
+  userAgent    String?
+  
+  @@map("launch_control_flag_history")
+}
+
+// System metrics tracking for dashboard
+model SystemMetrics {
+  id                String   @id @default(cuid())
+  metricName        String
+  metricValue       Float
+  metricType        String   // 'counter', 'gauge', 'histogram'
+  
+  // Dimensions/tags
+  tags              Json?
+  
+  // Timestamp
+  timestamp         DateTime @default(now())
+  
+  @@map("system_metrics")
+  @@index([metricName, timestamp])
+}
+
+// Launch control alerts and notifications
+model LaunchControlAlert {
+  id            String   @id @default(cuid())
+  alertType     String   // 'LIMIT_EXCEEDED', 'FLAG_CHANGED', 'EMERGENCY_STOP'
+  severity      String   // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+  
+  title         String
+  message       String
+  details       Json?
+  
+  // Status
+  status        String   @default("ACTIVE") // 'ACTIVE', 'ACKNOWLEDGED', 'RESOLVED'
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedAt    DateTime?
+  
+  // Metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("launch_control_alerts")
+  @@index([alertType, status, createdAt])
+}

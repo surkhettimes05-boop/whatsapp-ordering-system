@@ -1,0 +1,478 @@
+// ============================================================================
+// ENHANCED PRISMA SCHEMA WITH ADVANCED FINANCIAL LEDGER
+// ============================================================================
+// This schema extends the base schema with advanced financial features:
+// - Immutable ledger with hash chains
+// - Financial reporting tables
+// - Compliance tracking
+// - Advanced audit trails
+// - Reconciliation support
+// ============================================================================
+
+// Add this to your existing schema.prisma file
+
+// ============================================================================
+// ENHANCED LEDGER ENTRY MODEL
+// ============================================================================
+
+model LedgerEntry {
+  id             String             @id @default(uuid())
+  idempotencyKey String             @unique // FN-01: Critical for financial reliability
+  retailerId     String
+  wholesalerId   String
+  orderId        String?
+  entryType      LedgerEntryType
+  amount         Decimal
+  balanceAfter   Decimal
+  dueDate        DateTime?
+  createdBy      LedgerEntryCreator @default(SYSTEM)
+  
+  // FN-02: Tamper-evident chain
+  hash           String             // SHA-256 hash of this entry
+  previousHash   String?            // Hash of the previous entry (null for genesis)
+
+  createdAt      DateTime           @default(now())
+  // IMMUTABLE: No updatedAt, no delete - append-only ledger
+  
+  order          Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  retailer       Retailer           @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  wholesaler     Wholesaler         @relation(fields: [wholesalerId], references: [id], onDelete: Cascade)
+  payment        RetailerPayment?
+  creditReservation CreditReservation?
+  transactionAudits TransactionAudit[]
+
+  @@index([retailerId, wholesalerId])
+  @@index([orderId])
+  @@index([entryType])
+  @@index([createdAt])
+  @@index([dueDate])
+  @@index([retailerId, wholesalerId, createdAt])
+  @@index([hash])
+  @@index([previousHash])
+  @@map("ledger_entries")
+}
+
+// ============================================================================
+// FINANCIAL REPORTING MODELS
+// ============================================================================
+
+model FinancialSnapshot {
+  id                   String    @id @default(uuid())
+  snapshotDate         DateTime  // Date this snapshot is for
+  snapshotType         String    // DAILY, WEEKLY, MONTHLY, ANNUAL
+  
+  // Retail Metrics
+  retailerId           String?   // If null, this is a system-wide snapshot
+  totalRetailers       Int       @default(0)
+  
+  // Credit Metrics
+  totalCreditLimit     Decimal   @default(0)
+  totalCreditUsed      Decimal   @default(0)
+  totalCreditAvailable Decimal   @default(0)
+  overdueCreditCount   Int       @default(0)
+  overdueCreditAmount  Decimal   @default(0)
+  
+  // Order Metrics
+  pendingOrders        Int       @default(0)
+  completedOrders      Int       @default(0)
+  delayedOrders        Int       @default(0)
+  
+  // Financial Metrics
+  totalReceivables     Decimal   @default(0) // What we're owed
+  totalPayables        Decimal   @default(0) // What we owe
+  netPosition          Decimal   @default(0) // receivables - payables
+  
+  // Cash Flow
+  dailyInflow          Decimal   @default(0) // Payments received
+  dailyOutflow         Decimal   @default(0) // Disbursements made
+  netCashFlow          Decimal   @default(0) // inflow - outflow
+  
+  createdAt            DateTime  @default(now())
+  
+  @@index([snapshotDate])
+  @@index([snapshotType])
+  @@index([retailerId])
+  @@unique([snapshotDate, snapshotType, retailerId])
+  @@map("financial_snapshots")
+}
+
+model TransactionAudit {
+  id                   String    @id @default(uuid())
+  
+  // Transaction Details
+  transactionId        String    // Reference to original transaction (payment/ledger entry ID)
+  transactionType      String    // PAYMENT, DEBIT, CREDIT, REVERSAL, ADJUSTMENT
+  referenceId          String?   // Order ID, Payment ID, etc.
+  
+  // Parties Involved
+  retailerId           String
+  wholesalerId         String?
+  initiatedBy          String    // User/system ID who initiated
+  approvedBy           String?   // Admin/system who approved
+  
+  // Amount & Status
+  amount               Decimal
+  status               String    // PENDING, APPROVED, REJECTED, COMPLETED, REVERSED
+  previousStatus       String?
+  
+  // Detailed Log
+  action               String    // CREATE, UPDATE, APPROVE, REJECT, PROCESS, REVERSE
+  reason               String?   // Why this action was taken
+  metadata             Json?     // Additional context
+  
+  // Timestamps
+  requestedAt          DateTime  @default(now())
+  approvedAt           DateTime?
+  processedAt          DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  ledgerEntry          LedgerEntry? @relation(fields: [transactionId], references: [id])
+  
+  @@index([transactionId])
+  @@index([transactionType])
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([status])
+  @@index([initiatedBy])
+  @@index([approvedBy])
+  @@index([requestedAt])
+  @@index([createdAt])
+  @@map("transaction_audits")
+}
+
+model FinancialReconciliation {
+  id                   String    @id @default(uuid())
+  
+  // Reconciliation Details
+  reconciliationType   String    // BANK, SYSTEM, VENDOR_STATEMENT
+  reconciliationDate   DateTime  // Date being reconciled
+  
+  // Parties
+  retailerId           String?
+  wholesalerId         String?
+  bankName             String?
+  
+  // Reconciliation Data
+  systemAmount         Decimal   // Amount in our system
+  externalAmount       Decimal   // Amount from bank/statement
+  discrepancy          Decimal   // Difference (should be 0)
+  isMatched            Boolean   @default(false)
+  
+  // Details
+  matchedTransactions  Int       @default(0) // Number of matched transactions
+  unmatchedCount       Int       @default(0) // Transactions not matched
+  unmatchedDetails     Json?     // Details of unmatched items
+  
+  // Resolution
+  resolutionStatus     String    // PENDING, RESOLVED, ESCALATED, MANUAL_REVIEW
+  resolvedBy           String?   // Admin who resolved
+  resolutionNotes      String?
+  
+  // Timestamps
+  startedAt            DateTime  @default(now())
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  @@index([reconciliationType])
+  @@index([reconciliationDate])
+  @@index([retailerId])
+  @@index([wholesalerId])
+  @@index([isMatched])
+  @@index([resolutionStatus])
+  @@index([createdAt])
+  @@map("financial_reconciliations")
+}
+
+// ============================================================================
+// COMPLIANCE & AUDIT MODELS
+// ============================================================================
+
+model ComplianceLog {
+  id                   String    @id @default(uuid())
+  
+  // Compliance Details
+  complianceType       String    // TAX, GDPR, PAYMENT_REGULATION, ACCOUNTING_STANDARD
+  requirement          String    // What rule/requirement
+  
+  // Scope
+  applicableTo         String?   // Retailer ID, Wholesaler ID, or null for system-wide
+  
+  // Compliance Check
+  isCompliant          Boolean   @default(false)
+  checkPerformedAt     DateTime  @default(now())
+  checkPerformedBy     String?   // Admin/system ID
+  
+  // Details
+  evidence             Json?     // Documents/proof of compliance
+  violations           Json?     // List of violations if not compliant
+  remediationDue       DateTime?
+  remediationCompleted DateTime?
+  
+  // Notes
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  @@index([complianceType])
+  @@index([applicableTo])
+  @@index([isCompliant])
+  @@index([checkPerformedAt])
+  @@index([createdAt])
+  @@map("compliance_logs")
+}
+
+model SystemAuditLog {
+  id                   String    @id @default(uuid())
+  
+  // System Action
+  action               String    // SCHEMA_CHANGE, CONFIG_UPDATE, USER_SYNC, DATA_EXPORT, BATCH_PROCESS
+  component            String    // Affected component (orders, credit, ledger, etc.)
+  
+  // Actor
+  performedBy          String    // Admin ID or SYSTEM
+  
+  // Details
+  description          String
+  oldValue             Json?     // Previous state
+  newValue             Json?     // New state
+  impact               String?   // CRITICAL, HIGH, MEDIUM, LOW
+  
+  // Outcome
+  status               String    // SUCCESS, FAILURE, PARTIAL
+  errorMessage         String?
+  recordsAffected      Int?
+  
+  // Metadata
+  metadata             Json?     // Additional context
+  createdAt            DateTime  @default(now())
+  
+  @@index([action])
+  @@index([component])
+  @@index([performedBy])
+  @@index([status])
+  @@index([createdAt])
+  @@map("system_audit_logs")
+}
+
+// ============================================================================
+// ENHANCED REPORTING MODELS
+// ============================================================================
+
+model DailyReport {
+  id                   String    @id @default(uuid())
+  reportDate           DateTime  // Date this report covers
+  
+  // Order Metrics
+  totalOrders          Int       @default(0)
+  newOrders            Int       @default(0)
+  completedOrders      Int       @default(0)
+  cancelledOrders      Int       @default(0)
+  
+  // Financial Metrics
+  totalRevenue         Decimal   @default(0)
+  totalPayments        Decimal   @default(0)
+  outstandingAmount    Decimal   @default(0)
+  
+  // User Metrics
+  activeRetailers      Int       @default(0)
+  activeWholesalers    Int       @default(0)
+  newRegistrations     Int       @default(0)
+  
+  // Performance Metrics
+  averageOrderValue    Decimal   @default(0)
+  averageResponseTime  Int       @default(0) // milliseconds
+  systemUptime         Decimal   @default(100) // percentage
+  
+  // WhatsApp Metrics
+  messagesReceived     Int       @default(0)
+  messagesSent         Int       @default(0)
+  conversionsToOrders  Int       @default(0)
+  
+  // Generated metadata
+  generatedAt          DateTime  @default(now())
+  generatedBy          String?   // Admin ID or SYSTEM
+  
+  createdAt            DateTime  @default(now())
+  
+  @@index([reportDate])
+  @@index([generatedAt])
+  @@unique([reportDate])
+  @@map("daily_reports")
+}
+
+model AlertLog {
+  id                   String    @id @default(uuid())
+  
+  // Alert Details
+  alertType            String    // ERROR_RATE, RESPONSE_TIME, CREDIT_LIMIT, SYSTEM_DOWN
+  severity             String    // LOW, MEDIUM, HIGH, CRITICAL
+  title                String
+  message              String
+  
+  // Context
+  component            String?   // Which system component
+  entityId             String?   // Related entity (order, retailer, etc.)
+  entityType           String?   // Type of entity
+  
+  // Metrics
+  currentValue         Decimal?  // Current metric value
+  thresholdValue       Decimal?  // Threshold that was exceeded
+  
+  // Status
+  status               String    @default("ACTIVE") // ACTIVE, ACKNOWLEDGED, RESOLVED
+  acknowledgedBy       String?   // Admin who acknowledged
+  acknowledgedAt       DateTime?
+  resolvedBy           String?   // Admin who resolved
+  resolvedAt           DateTime?
+  resolutionNotes      String?
+  
+  // Notification
+  notificationsSent    Json?     // Record of notifications sent
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  @@index([alertType])
+  @@index([severity])
+  @@index([status])
+  @@index([component])
+  @@index([createdAt])
+  @@map("alert_logs")
+}
+
+// ============================================================================
+// PERFORMANCE MONITORING MODELS
+// ============================================================================
+
+model PerformanceMetric {
+  id                   String    @id @default(uuid())
+  
+  // Metric Details
+  metricName           String    // response_time, error_rate, throughput, etc.
+  metricType           String    // GAUGE, COUNTER, HISTOGRAM
+  component            String    // api, database, whatsapp, etc.
+  
+  // Values
+  value                Decimal
+  unit                 String    // ms, requests/sec, percentage, etc.
+  
+  // Context
+  tags                 Json?     // Additional tags for filtering
+  
+  // Timestamp
+  timestamp            DateTime  @default(now())
+  
+  @@index([metricName])
+  @@index([component])
+  @@index([timestamp])
+  @@index([metricName, component, timestamp])
+  @@map("performance_metrics")
+}
+
+// ============================================================================
+// BUSINESS INTELLIGENCE MODELS
+// ============================================================================
+
+model BusinessInsight {
+  id                   String    @id @default(uuid())
+  
+  // Insight Details
+  insightType          String    // TREND, ANOMALY, RECOMMENDATION, FORECAST
+  category             String    // SALES, CREDIT, INVENTORY, CUSTOMER
+  title                String
+  description          String
+  
+  // Data
+  dataPoints           Json      // Supporting data
+  confidence           Decimal   // Confidence score (0-100)
+  impact               String    // LOW, MEDIUM, HIGH
+  
+  // Recommendations
+  recommendations      Json?     // Suggested actions
+  
+  // Status
+  status               String    @default("NEW") // NEW, REVIEWED, ACTED_UPON, DISMISSED
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  actionTaken          String?
+  
+  // Validity
+  validFrom            DateTime  @default(now())
+  validUntil           DateTime?
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  @@index([insightType])
+  @@index([category])
+  @@index([status])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([createdAt])
+  @@map("business_insights")
+}
+
+// ============================================================================
+// ENHANCED ENUMS
+// ============================================================================
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+enum ReconciliationStatus {
+  PENDING
+  MATCHED
+  DISCREPANCY
+  RESOLVED
+  ESCALATED
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  NON_COMPLIANT
+  PENDING_REVIEW
+  REMEDIATION_REQUIRED
+}
+
+enum InsightType {
+  TREND
+  ANOMALY
+  RECOMMENDATION
+  FORECAST
+  WARNING
+}
+
+enum MetricType {
+  GAUGE
+  COUNTER
+  HISTOGRAM
+  TIMER
+}
+
+// ============================================================================
+// VIEWS (Represented as comments for reference)
+// ============================================================================
+
+// These would be created as database views:
+
+// VIEW current_balances - Current outstanding balances
+// VIEW overdue_balances - Balances past due date
+// VIEW daily_financial_summary - Daily transaction summary
+// VIEW retailer_credit_utilization - Credit usage by retailer
+// VIEW wholesaler_performance - Performance metrics by wholesaler
+// VIEW system_health_dashboard - Real-time system health metrics

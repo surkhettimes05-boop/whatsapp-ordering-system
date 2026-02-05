@@ -1,0 +1,89 @@
+# =============================================================================
+# WORKER SERVICE DOCKERFILE
+# Handles background job processing
+# =============================================================================
+
+FROM node:18-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
+
+# Create app directory
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S whatsapp -u 1001
+
+# =============================================================================
+# DEPENDENCIES STAGE
+# =============================================================================
+FROM base AS deps
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
+FROM base AS build
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install all dependencies (including dev)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# =============================================================================
+# PRODUCTION STAGE
+# =============================================================================
+FROM base AS production
+
+# Set environment
+ENV NODE_ENV=production
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package*.json ./
+
+# Copy application code
+COPY --from=build /app/src ./src
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/start-messaging-infrastructure.js ./
+
+# Create necessary directories
+RUN mkdir -p logs temp && \
+    chown -R whatsapp:nodejs /app
+
+# Health check script
+COPY --from=build /app/scripts/worker-health-check.js ./scripts/
+RUN chmod +x ./scripts/worker-health-check.js
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node ./scripts/worker-health-check.js || exit 1
+
+# Switch to non-root user
+USER whatsapp
+
+# Start workers with dumb-init
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "start-messaging-infrastructure.js"]

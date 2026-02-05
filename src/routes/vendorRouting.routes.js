@@ -10,6 +10,8 @@ const router = express.Router();
 const VendorRoutingService = require('../services/vendorRouting.service');
 const { AppError, ErrorTypes } = require('../utils/errors');
 
+const { authenticate, isAdmin } = require('../middleware/auth.middleware');
+
 // ============================================================================
 // POST /api/orders/:orderId/route-to-vendors
 // ============================================================================
@@ -19,7 +21,7 @@ const { AppError, ErrorTypes } = require('../utils/errors');
 // Response: { routingId, orderId, status: 'PENDING_RESPONSES' }
 // ============================================================================
 
-router.post('/orders/:orderId/route-to-vendors', async (req, res, next) => {
+router.post('/orders/:orderId/route-to-vendors', authenticate, isAdmin, async (req, res, next) => {
   try {
     const { orderId } = req.params;
     const { retailerId, productCategory } = req.body;
@@ -189,7 +191,7 @@ router.get('/routing/:routingId/status', async (req, res, next) => {
 // Response: { routingId, vendorId, status: 'TIMEOUT' }
 // ============================================================================
 
-router.post('/routing/:routingId/timeout', async (req, res, next) => {
+router.post('/routing/:routingId/timeout', authenticate, isAdmin, async (req, res, next) => {
   try {
     const { routingId } = req.params;
     const { vendorId } = req.body;

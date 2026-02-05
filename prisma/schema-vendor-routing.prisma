@@ -1,0 +1,429 @@
+// Vendor Routing Engine Database Schema
+// This extends the existing schema with vendor routing capabilities
+
+model Vendor {
+  id                String   @id @default(cuid())
+  businessName      String
+  contactName       String
+  phoneNumber       String   @unique
+  email             String?  @unique
+  address           String
+  city              String
+  region            String
+  
+  // Business Details
+  businessType      VendorType
+  businessLicense   String?
+  taxId             String?
+  
+  // Operational Status
+  isActive          Boolean  @default(true)
+  isVerified        Boolean  @default(false)
+  onboardedAt       DateTime @default(now())
+  lastActiveAt      DateTime @default(now())
+  
+  // Service Areas
+  serviceRadius     Float    @default(10) // km
+  deliveryZones     VendorDeliveryZone[]
+  
+  // Credit & Financial
+  creditLimit       Decimal  @default(0)
+  currentCredit     Decimal  @default(0)
+  creditRating      CreditRating @default(UNRATED)
+  acceptsCredit     Boolean  @default(false)
+  
+  // Performance Metrics
+  performanceScore  VendorPerformance?
+  
+  // Relationships
+  products          VendorProduct[]
+  orders            Order[]
+  orderBids         OrderBid[]
+  slaMetrics        VendorSLA[]
+  notifications     VendorNotification[]
+  overrides         VendorOverride[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  @@map("vendors")
+}
+
+model VendorProduct {
+  id                String   @id @default(cuid())
+  vendorId          String
+  productId         String
+  
+  // Pricing
+  basePrice         Decimal
+  discountPrice     Decimal?
+  minimumQuantity   Int      @default(1)
+  maximumQuantity   Int?
+  
+  // Availability
+  isAvailable       Boolean  @default(true)
+  stockQuantity     Int?
+  leadTimeHours     Int      @default(24)
+  
+  // Quality & Sourcing
+  qualityGrade      QualityGrade @default(STANDARD)
+  sourceLocation    String?
+  certifications    String[] // JSON array of certifications
+  
+  // Performance
+  averageRating     Float?
+  totalOrders       Int      @default(0)
+  
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([vendorId, productId])
+  @@map("vendor_products")
+}
+
+model VendorPerformance {
+  id                String   @id @default(cuid())
+  vendorId          String   @unique
+  
+  // Scoring Components (0-100 scale)
+  priceScore        Float    @default(0)
+  deliveryScore     Float    @default(0)
+  reliabilityScore  Float    @default(0)
+  creditScore       Float    @default(0)
+  qualityScore      Float    @default(0)
+  
+  // Overall Score (weighted average)
+  overallScore      Float    @default(0)
+  
+  // Performance Metrics
+  totalOrders       Int      @default(0)
+  completedOrders   Int      @default(0)
+  cancelledOrders   Int      @default(0)
+  lateDeliveries    Int      @default(0)
+  
+  // Timing Metrics
+  avgDeliveryTime   Float?   // hours
+  avgResponseTime   Float?   // minutes
+  onTimeDeliveryRate Float   @default(0) // percentage
+  
+  // Financial Metrics
+  avgOrderValue     Decimal  @default(0)
+  totalRevenue      Decimal  @default(0)
+  creditUtilization Float    @default(0) // percentage
+  
+  // Quality Metrics
+  avgRating         Float?
+  complaintRate     Float    @default(0) // percentage
+  returnRate        Float    @default(0) // percentage
+  
+  // Calculation Metadata
+  lastCalculatedAt  DateTime @default(now())
+  calculationPeriod Int      @default(90) // days
+  
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("vendor_performance")
+}
+
+model VendorSLA {
+  id                String   @id @default(cuid())
+  vendorId          String
+  
+  // SLA Definitions
+  slaType           SLAType
+  targetValue       Float    // Target metric value
+  actualValue       Float?   // Actual achieved value
+  unit              String   // Unit of measurement (hours, percentage, etc.)
+  
+  // Time Period
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Status
+  status            SLAStatus @default(ACTIVE)
+  breachCount       Int      @default(0)
+  complianceRate    Float?   // percentage
+  
+  // Penalties & Rewards
+  penaltyAmount     Decimal? @default(0)
+  bonusAmount       Decimal? @default(0)
+  
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("vendor_sla")
+}
+
+model OrderBid {
+  id                String   @id @default(cuid())
+  orderId           String
+  vendorId          String
+  
+  // Bid Details
+  bidPrice          Decimal
+  deliveryTime      Int      // hours from acceptance
+  deliveryFee       Decimal  @default(0)
+  
+  // Bid Status
+  status            BidStatus @default(PENDING)
+  priority          Int      @default(0) // Higher number = higher priority
+  
+  // Routing Information
+  isAutoBid         Boolean  @default(true) // System generated vs manual
+  routingScore      Float?   // Score used for routing decision
+  routingRank       Int?     // Rank in routing order
+  
+  // Response Tracking
+  sentAt            DateTime @default(now())
+  respondedAt       DateTime?
+  acceptedAt        DateTime?
+  rejectedAt        DateTime?
+  expiredAt         DateTime?
+  
+  // Rejection/Cancellation
+  rejectionReason   String?
+  cancellationReason String?
+  
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([orderId, vendorId])
+  @@map("order_bids")
+}
+
+model VendorDeliveryZone {
+  id                String   @id @default(cuid())
+  vendorId          String
+  
+  // Geographic Definition
+  zoneName          String
+  zoneType          ZoneType // RADIUS, POLYGON, POSTAL_CODES
+  
+  // Zone Data (JSON)
+  coordinates       Json?    // For POLYGON zones
+  centerLat         Float?   // For RADIUS zones
+  centerLng         Float?   // For RADIUS zones
+  radiusKm          Float?   // For RADIUS zones
+  postalCodes       String[] // For POSTAL_CODES zones
+  
+  // Service Details
+  deliveryFee       Decimal  @default(0)
+  minimumOrder      Decimal  @default(0)
+  maxDeliveryTime   Int      // hours
+  
+  // Status
+  isActive          Boolean  @default(true)
+  
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("vendor_delivery_zones")
+}
+
+model VendorNotification {
+  id                String   @id @default(cuid())
+  vendorId          String
+  
+  // Notification Details
+  type              NotificationType
+  title             String
+  message           String
+  data              Json?    // Additional data payload
+  
+  // Delivery Channels
+  channels          NotificationChannel[]
+  
+  // Status
+  status            NotificationStatus @default(PENDING)
+  sentAt            DateTime?
+  readAt            DateTime?
+  respondedAt       DateTime?
+  
+  // Response Data
+  response          Json?
+  responseStatus    ResponseStatus?
+  
+  // Retry Logic
+  retryCount        Int      @default(0)
+  maxRetries        Int      @default(3)
+  nextRetryAt       DateTime?
+  
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("vendor_notifications")
+}
+
+model VendorOverride {
+  id                String   @id @default(cuid())
+  vendorId          String?  // null for global overrides
+  
+  // Override Details
+  overrideType      OverrideType
+  targetField       String   // Field being overridden
+  originalValue     Json?    // Original value
+  overrideValue     Json     // Override value
+  
+  // Conditions
+  conditions        Json?    // Conditions for when override applies
+  
+  // Metadata
+  reason            String
+  createdBy         String   // Admin user ID
+  approvedBy        String?  // Approver user ID
+  
+  // Validity
+  isActive          Boolean  @default(true)
+  validFrom         DateTime @default(now())
+  validUntil        DateTime?
+  
+  // Usage Tracking
+  usageCount        Int      @default(0)
+  lastUsedAt        DateTime?
+  
+  vendor            Vendor?  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("vendor_overrides")
+}
+
+model RoutingLog {
+  id                String   @id @default(cuid())
+  orderId           String
+  
+  // Routing Details
+  routingStrategy   String   // Algorithm used
+  totalVendors      Int      // Total vendors considered
+  eligibleVendors   Int      // Vendors that met criteria
+  
+  // Scoring Details
+  scoringWeights    Json     // Weights used for scoring
+  vendorScores      Json     // Scores for each vendor
+  
+  // Selection Results
+  selectedVendorId  String?
+  fallbackVendors   String[] // Ordered list of fallback vendor IDs
+  
+  // Performance
+  processingTimeMs  Int
+  
+  // Metadata
+  routingVersion    String   @default("1.0")
+  
+  createdAt         DateTime @default(now())
+
+  @@map("routing_logs")
+}
+
+// Enums
+enum VendorType {
+  WHOLESALER
+  DISTRIBUTOR
+  MANUFACTURER
+  RETAILER
+  COOPERATIVE
+}
+
+enum CreditRating {
+  UNRATED
+  POOR
+  FAIR
+  GOOD
+  EXCELLENT
+}
+
+enum QualityGrade {
+  PREMIUM
+  STANDARD
+  ECONOMY
+}
+
+enum SLAType {
+  DELIVERY_TIME
+  RESPONSE_TIME
+  ORDER_ACCEPTANCE_RATE
+  ON_TIME_DELIVERY_RATE
+  QUALITY_RATING
+  COMPLAINT_RESOLUTION_TIME
+}
+
+enum SLAStatus {
+  ACTIVE
+  BREACHED
+  SUSPENDED
+  TERMINATED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum ZoneType {
+  RADIUS
+  POLYGON
+  POSTAL_CODES
+}
+
+enum NotificationType {
+  ORDER_REQUEST
+  ORDER_ACCEPTED
+  ORDER_REJECTED
+  ORDER_CANCELLED
+  PAYMENT_DUE
+  SLA_BREACH
+  PERFORMANCE_ALERT
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+  WHATSAPP
+  PUSH
+  WEBHOOK
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ResponseStatus {
+  ACCEPTED
+  REJECTED
+  IGNORED
+}
+
+enum OverrideType {
+  VENDOR_PRIORITY
+  PRICE_ADJUSTMENT
+  DELIVERY_TIME
+  CREDIT_LIMIT
+  AVAILABILITY
+  ROUTING_EXCLUSION
+}
