@@ -161,8 +161,7 @@ services:
     region: oregon
     rootDir: frontend
     buildCommand: |
-      npm ci &&
-      npm run build
+      echo "skip build (using prebuilt dist)"
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL

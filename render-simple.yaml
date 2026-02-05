@@ -19,11 +19,11 @@ services:
       - key: JWT_SECRET
         value: whatsapp_ordering_super_secure_jwt_secret_key_production_2026_render_deployment
       - key: TWILIO_ACCOUNT_SID
-        value: ACbf3cb8f95d837fe0d2fbeb025757cdfe
+        sync: false
       - key: TWILIO_AUTH_TOKEN
-        value: 4a8fd27f8038ab2fdf6796c2f3f36773
+        sync: false
       - key: TWILIO_WHATSAPP_FROM
-        value: whatsapp:+14155238886
+        sync: false
       - key: FORCE_TWILIO_VERIFY
         value: false
       - key: LOG_LEVEL
@@ -40,7 +40,7 @@ services:
     runtime: static
     plan: starter
     rootDir: frontend
-    buildCommand: npm ci && npm run build
+    buildCommand: echo "skip build (using prebuilt dist)"
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
