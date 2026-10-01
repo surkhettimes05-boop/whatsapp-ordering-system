@@ -1,5 +1,7 @@
 const prisma = require('../config/database');
 const commerceService = require('../services/commerce.service');
+const shoppingService = require('../services/shopping.service');
+const paymentService = require('../services/payment.service');
 const whatsappService = require('../services/whatsapp.service');
 const conversationService = require('../services/conversation.service');
 const webhookService = require('../services/whatsappWebhook.service');
@@ -113,6 +115,11 @@ class CommerceWhatsAppController {
     if (['repeat', 'repeat order', 'order again'].includes(lowerText)) return this.repeatLastOrder(retailer, phone);
     if (['address', 'addresses', 'saved address'].includes(lowerText)) return this.showAddress(retailer, phone);
     if (['support', 'help me', 'customer care'].includes(lowerText)) return this.startSupport(retailer, phone);
+    if (lowerText === 'remove coupon' || lowerText === 'clear coupon') return this.applyCoupon(retailer, phone, null);
+    if (lowerText.startsWith('coupon ') || lowerText.startsWith('apply ')) {
+      const code = text.replace(/^(coupon|apply)\s+/i, '').trim();
+      return this.applyCoupon(retailer, phone, code);
+    }
     if (['help', '4'].includes(lowerText)) {
       return whatsappService.sendMessage(phone, whatsappService.getHelpMessage(), { immediate: true });
     }
@@ -147,13 +154,13 @@ class CommerceWhatsAppController {
     const text = String(event.text || '').trim();
 
     if (state.step === 'CHECKOUT_SERVICE_AREA') {
-      const result = await commerceService.checkServiceArea(text);
+      const result = await shoppingService.resolveServiceArea(text);
       if (!result.serviceable) {
-        await whatsappService.sendMessage(phone, 'Sorry, we do not deliver to that postal/service code yet. Send another code or type *menu*.', { immediate: true });
+        await whatsappService.sendMessage(phone, 'Sorry, we do not deliver to that area yet. Send another postal/service code, city or area name.', { immediate: true });
         return true;
       }
       await conversationService.setState(retailer.id, 'CHECKOUT_ADDRESS', {
-        postalCode: text,
+        serviceAreaCode: result.area?.code || text,
         area: result.area || null
       });
       await whatsappService.sendMessage(
@@ -173,14 +180,14 @@ class CommerceWhatsAppController {
         return true;
       }
 
-      const address = await commerceService.saveAddress(retailer.id, {
+      const address = await shoppingService.createAddress(retailer.id, {
         label: 'Home',
         recipientName: retailer.ownerName || retailer.pasalName,
         phone: retailer.phoneNumber,
         addressLine1: addressText,
         city: state.data?.area?.city || retailer.city,
         district: state.data?.area?.district || retailer.district,
-        postalCode: state.data?.postalCode || null,
+        postalCode: state.data?.area?.postalCode || state.data?.serviceAreaCode || null,
         latitude: event.location?.latitude,
         longitude: event.location?.longitude,
         isDefault: true
@@ -216,14 +223,31 @@ class CommerceWhatsAppController {
     if (actionId === 'menu_support') return this.startSupport(retailer, phone), true;
     if (actionId === 'checkout_start') return this.beginCheckout(retailer, phone), true;
     if (actionId === 'address_use') {
-      const address = await commerceService.getDefaultAddress(retailer.id);
+      const addresses = await shoppingService.listAddresses(retailer.id);
+      const address = addresses.find(item => item.isDefault) || addresses[0];
       if (!address) return this.askForAddress(retailer, phone), true;
       return this.showCheckoutReview(retailer, phone, address), true;
     }
-    if (actionId === 'address_change') return this.askForAddress(retailer, phone), true;
+    if (actionId === 'address_change') return this.showAddress(retailer, phone), true;
+    if (actionId === 'address_new') return this.askForAddress(retailer, phone), true;
+    if (actionId.startsWith('address_select:')) {
+      const id = actionId.slice('address_select:'.length);
+      const address = await shoppingService.setDefaultAddress(retailer.id, id);
+      await whatsappService.sendButtons(
+        phone,
+        `✅ Default address set to *${address.label}*\n${address.addressLine1}`,
+        [
+          { id: 'checkout_start', title: 'Checkout' },
+          { id: 'address_new', title: 'Add address' }
+        ]
+      );
+      return true;
+    }
     if (actionId === 'checkout_review') return this.choosePayment(retailer, phone), true;
-    if (actionId === 'checkout_cod') return this.placeOrder(retailer, phone, 'COD'), true;
-    if (actionId === 'checkout_online') return this.placeOrder(retailer, phone, 'ONLINE'), true;
+    if (actionId === 'checkout_cod') return this.placeOrder(retailer, phone, null), true;
+    if (actionId === 'checkout_khalti') return this.placeOrder(retailer, phone, 'khalti'), true;
+    if (actionId === 'checkout_esewa') return this.placeOrder(retailer, phone, 'esewa'), true;
+    if (actionId === 'checkout_online') return this.choosePayment(retailer, phone), true;
     if (actionId === 'checkout_cancel') {
       await conversationService.clearState(retailer.id);
       await whatsappService.sendMessage(phone, 'Checkout cancelled. Your cart is still saved.', { immediate: true });
@@ -348,11 +372,28 @@ class CommerceWhatsAppController {
   }
 
   async sendOffers(phone) {
-    const products = await commerceService.listOffers(30);
-    if (!products.length) {
-      return whatsappService.sendMessage(phone, '🔥 No discounted products are active right now.', { immediate: true });
+    const [campaigns, products] = await Promise.all([
+      shoppingService.listOffers(true),
+      commerceService.listOffers(30)
+    ]);
+
+    if (campaigns.length) {
+      const message = campaigns.slice(0, 10).map(offer => {
+        const code = offer.code ? ` • Code: *${offer.code}*` : ' • Auto-applied';
+        const value = offer.type === 'PERCENT'
+          ? `${offer.value}% off`
+          : offer.type === 'FIXED'
+            ? `Rs. ${offer.value} off`
+            : 'Free delivery';
+        return `🔥 *${offer.title}* — ${value}${code}`;
+      }).join('\n');
+      await whatsappService.sendMessage(phone, message + '\n\nUse *coupon CODE* to apply a coupon.', { immediate: true });
     }
-    return this.sendProducts(phone, products, 'Current offers');
+
+    if (products.length) return this.sendProducts(phone, products, 'Discounted products');
+    if (!campaigns.length) {
+      return whatsappService.sendMessage(phone, '🔥 No offers are active right now.', { immediate: true });
+    }
   }
 
   async sendSearchResults(phone, query) {
@@ -450,20 +491,21 @@ class CommerceWhatsAppController {
       return whatsappService.sendButtons(phone, '🛒 Your cart is empty.', [{ id: 'menu_catalog', title: 'Browse catalog' }]);
     }
 
-    const address = await commerceService.getDefaultAddress(retailer.id);
+    const addresses = await shoppingService.listAddresses(retailer.id);
+    const address = addresses.find(item => item.isDefault) || addresses[0];
     if (address) {
       return whatsappService.sendButtons(
         phone,
         `📍 Deliver to:\n*${address.label}*\n${address.addressLine1}${address.city ? ', ' + address.city : ''}${address.postalCode ? ' • ' + address.postalCode : ''}`,
         [
           { id: 'address_use', title: 'Use address' },
-          { id: 'address_change', title: 'Change address' }
+          { id: 'address_change', title: 'Choose another' }
         ]
       );
     }
 
     if (retailer.address) {
-      const saved = await commerceService.saveAddress(retailer.id, {
+      const saved = await shoppingService.createAddress(retailer.id, {
         label: 'Home',
         recipientName: retailer.ownerName || retailer.pasalName,
         phone: retailer.phoneNumber,
@@ -481,84 +523,96 @@ class CommerceWhatsAppController {
   }
 
   async askForAddress(retailer, phone) {
-    const areas = await commerceService.listServiceAreas();
+    const areas = await shoppingService.listServiceAreas();
     if (areas.some(area => area.isActive)) {
       await conversationService.setState(retailer.id, 'CHECKOUT_SERVICE_AREA', {});
-      return whatsappService.sendMessage(phone, '📍 Send your delivery postal/service code to check availability.', { immediate: true });
+      return whatsappService.sendMessage(
+        phone,
+        '📍 Send your delivery postal/service code, city, district, or area name to check availability.',
+        { immediate: true }
+      );
     }
     await conversationService.setState(retailer.id, 'CHECKOUT_ADDRESS', {});
     return whatsappService.sendMessage(phone, '📍 Send your full delivery address or WhatsApp location.', { immediate: true });
   }
 
   async showCheckoutReview(retailer, phone, address) {
-    const cart = await commerceService.getCart(retailer.id);
-    return whatsappService.sendButtons(
-      phone,
-      whatsappService.formatCartSummary(cart) + `\n📍 Delivery: ${address.addressLine1}\n\nReview your order before payment.`,
-      [
-        { id: 'checkout_review', title: 'Continue' },
-        { id: 'menu_cart', title: 'Edit cart' },
-        { id: 'checkout_cancel', title: 'Cancel' }
-      ]
-    );
+    try {
+      const quote = await shoppingService.quote(retailer.id, { addressId: address.id });
+      let summary = whatsappService.formatCartSummary(await commerceService.getCart(retailer.id));
+      if (quote.discountAmount > 0) summary += `\nOffer discount: -Rs. ${quote.discountAmount}`;
+      if (quote.deliveryFee > 0) summary += `\nDelivery: Rs. ${quote.deliveryFee}`;
+      if (quote.totalSavings > 0) summary += `\n🎉 Total savings: Rs. ${quote.totalSavings}`;
+      summary += `\n*Payable: Rs. ${quote.totalAmount}*`;
+
+      return whatsappService.sendButtons(
+        phone,
+        summary + `\n\n📍 Delivery: ${address.addressLine1}\nReview your order before payment.`,
+        [
+          { id: 'checkout_review', title: 'Continue' },
+          { id: 'menu_cart', title: 'Edit cart' },
+          { id: 'checkout_cancel', title: 'Cancel' }
+        ]
+      );
+    } catch (error) {
+      await whatsappService.sendMessage(phone, `⚠️ ${error.message}`, { immediate: true });
+      return this.showAddress(retailer, phone);
+    }
   }
 
   async choosePayment(retailer, phone) {
-    const cart = await commerceService.getCart(retailer.id);
+    const addresses = await shoppingService.listAddresses(retailer.id);
+    const address = addresses.find(item => item.isDefault) || addresses[0];
+    const quote = await shoppingService.quote(retailer.id, { addressId: address?.id });
+    const providers = paymentService.configuredProviders();
+    const buttons = [{ id: 'checkout_cod', title: 'Cash on delivery' }];
+    if (providers.includes('khalti')) buttons.push({ id: 'checkout_khalti', title: 'Khalti' });
+    if (providers.includes('esewa')) buttons.push({ id: 'checkout_esewa', title: 'eSewa' });
+
     return whatsappService.sendButtons(
       phone,
-      `💳 *Choose payment*\nOrder total: Rs. ${cart.totalAmount}`,
-      [
-        { id: 'checkout_cod', title: 'Cash on delivery' },
-        { id: 'checkout_online', title: 'Pay online' }
-      ],
-      { footer: 'Online payment uses the configured Nepal payment provider.' }
+      `💳 *Choose payment*\nPayable: Rs. ${quote.totalAmount}${quote.totalSavings ? `\nYou save: Rs. ${quote.totalSavings}` : ''}`,
+      buttons,
+      { footer: providers.length ? 'Online payments are verified server-to-server.' : 'Online payment credentials are not configured yet.' }
     );
   }
 
-  async placeOrder(retailer, phone, paymentMode) {
-    const address = await commerceService.getDefaultAddress(retailer.id);
+  async placeOrder(retailer, phone, provider = null) {
+    const addresses = await shoppingService.listAddresses(retailer.id);
+    const address = addresses.find(item => item.isDefault) || addresses[0];
     if (!address) return this.askForAddress(retailer, phone);
 
-    const order = await commerceService.checkoutCart({
-      retailerId: retailer.id,
-      paymentMode,
-      sourceChannel: 'WHATSAPP',
-      deliveryName: address.recipientName || retailer.ownerName || retailer.pasalName,
-      deliveryPhone: address.phone || retailer.phoneNumber,
-      deliveryAddress: address.addressLine1
-    });
+    try {
+      const result = await shoppingService.checkout(retailer.id, {
+        addressId: address.id,
+        paymentProvider: provider,
+        sourceChannel: 'WHATSAPP'
+      });
+      const order = result.order;
 
-    if (paymentMode === 'ONLINE') {
-      try {
-        const payment = await commerceService.createOnlinePayment(order.id);
+      if (result.payment?.checkoutUrl) {
         await whatsappService.sendCtaUrl(
           phone,
-          `Order *${order.orderNumber}* is reserved for checkout.\nAmount: Rs. ${order.totalAmount}`,
-          'Pay now',
-          payment.checkoutUrl,
+          `Order *${order.orderNumber}* created.\nAmount: Rs. ${order.totalAmount}\nPayment: ${provider.toUpperCase()}`,
+          `Pay with ${provider === 'khalti' ? 'Khalti' : 'eSewa'}`,
+          result.payment.checkoutUrl,
           { header: 'Secure payment' }
         );
         return;
-      } catch (error) {
-        logger.warn('Online payment unavailable; order retained', { orderId: order.id, error: error.message });
-        await whatsappService.sendMessage(
-          phone,
-          `✅ Order *${order.orderNumber}* created, but online payment is not configured yet.\nPlease contact support or use COD on your next order.`,
-          { immediate: true }
-        );
-        return;
       }
-    }
 
-    await whatsappService.sendButtons(
-      phone,
-      `✅ *Order placed*\n\nOrder: *${order.orderNumber}*\nTotal: Rs. ${order.totalAmount}\nPayment: COD\nStatus: ${order.status}\n\nWe will send status updates here until delivery.`,
-      [
-        { id: 'menu_orders', title: 'Track orders' },
-        { id: 'menu_catalog', title: 'Shop again' }
-      ]
-    );
+      await whatsappService.sendButtons(
+        phone,
+        `✅ *Order placed*\n\nOrder: *${order.orderNumber}*\nTotal: Rs. ${order.totalAmount}\nPayment: COD\nStatus: ${order.status}${Number(order.savingsAmount || 0) > 0 ? `\nYou saved: Rs. ${order.savingsAmount}` : ''}\n\nWe will send status updates here until delivery.`,
+        [
+          { id: 'menu_orders', title: 'Track orders' },
+          { id: 'menu_catalog', title: 'Shop again' }
+        ]
+      );
+    } catch (error) {
+      logger.warn('Checkout failed', { retailerId: retailer.id, provider, error: error.message });
+      await whatsappService.sendMessage(phone, `⚠️ Checkout failed: ${error.message}`, { immediate: true });
+    }
   }
 
   async sendOrders(retailer, phone) {
@@ -605,15 +659,54 @@ class CommerceWhatsAppController {
   }
 
   async showAddress(retailer, phone) {
-    const address = await commerceService.getDefaultAddress(retailer.id);
-    if (!address) {
-      return whatsappService.sendButtons(phone, '📍 No saved delivery address.', [{ id: 'address_change', title: 'Add address' }]);
+    const addresses = await shoppingService.listAddresses(retailer.id);
+    if (!addresses.length) {
+      return whatsappService.sendButtons(phone, '📍 No saved delivery address.', [{ id: 'address_new', title: 'Add address' }]);
     }
-    return whatsappService.sendButtons(
-      phone,
-      `📍 *${address.label}*\n${address.addressLine1}${address.city ? ', ' + address.city : ''}${address.postalCode ? ' • ' + address.postalCode : ''}`,
-      [{ id: 'address_change', title: 'Change address' }]
-    );
+
+    if (whatsappService.usingMeta()) {
+      return whatsappService.sendList(
+        phone,
+        'Choose a saved address or add a new one.',
+        'Addresses',
+        [{
+          title: 'Saved addresses',
+          rows: [
+            ...addresses.slice(0, 9).map(address => ({
+              id: `address_select:${address.id}`,
+              title: `${address.isDefault ? '✓ ' : ''}${address.label}`.slice(0, 24),
+              description: [address.addressLine1, address.city, address.postalCode].filter(Boolean).join(', ').slice(0, 72)
+            })),
+            { id: 'address_new', title: 'Add new address', description: 'Save another delivery location' }
+          ]
+        }],
+        { header: 'Delivery addresses' }
+      );
+    }
+
+    const text = addresses.map((address, i) =>
+      `${i + 1}. ${address.isDefault ? '✓ ' : ''}*${address.label}* — ${address.addressLine1}`
+    ).join('\n');
+    return whatsappService.sendButtons(phone, '📍 *Saved addresses*\n\n' + text, [{ id: 'address_new', title: 'Add address' }]);
+  }
+
+  async applyCoupon(retailer, phone, code) {
+    try {
+      const quote = await shoppingService.setCartCoupon(retailer.id, code);
+      const line = code
+        ? `✅ Coupon *${String(code).toUpperCase()}* applied.`
+        : '✅ Coupon removed.';
+      return whatsappService.sendButtons(
+        phone,
+        `${line}\nDiscount: Rs. ${quote.discountAmount}\nPayable before delivery: Rs. ${quote.totalAmount}`,
+        [
+          { id: 'menu_cart', title: 'View cart' },
+          { id: 'checkout_start', title: 'Checkout' }
+        ]
+      );
+    } catch (error) {
+      return whatsappService.sendMessage(phone, `❌ ${error.message}`, { immediate: true });
+    }
   }
 
   async startSupport(retailer, phone) {
