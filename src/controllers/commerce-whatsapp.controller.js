@@ -601,6 +601,15 @@ class CommerceWhatsAppController {
         return;
       }
 
+      if (provider && result.paymentError) {
+        await whatsappService.sendMessage(
+          phone,
+          `✅ Order *${order.orderNumber}* was created, but ${provider.toUpperCase()} could not start: ${result.paymentError}\nYou can retry payment from support/admin without creating another order.`,
+          { immediate: true }
+        );
+        return;
+      }
+
       await whatsappService.sendButtons(
         phone,
         `✅ *Order placed*\n\nOrder: *${order.orderNumber}*\nTotal: Rs. ${order.totalAmount}\nPayment: COD\nStatus: ${order.status}${Number(order.savingsAmount || 0) > 0 ? `\nYou saved: Rs. ${order.savingsAmount}` : ''}\n\nWe will send status updates here until delivery.`,
