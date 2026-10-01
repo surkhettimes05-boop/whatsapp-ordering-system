@@ -100,6 +100,23 @@ class CommerceController {
     }
   }
 
+  async updateOrderStatus(req, res) {
+    try {
+      const order = await commerceService.updateCommerceOrderStatus(req.params.id, req.body.status);
+      const whatsappService = require('../services/whatsapp.service');
+      if (order.retailer?.whatsappNumber) {
+        whatsappService.sendMessage(
+          order.retailer.whatsappNumber,
+          `📦 Order *${order.orderNumber}* status: *${order.status.replaceAll('_', ' ')}*`,
+          { immediate: true }
+        ).catch(() => {});
+      }
+      res.json({ success: true, data: order });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
   async sales(req, res) {
     try {
       res.json({ success: true, data: await commerceService.getSalesDashboard(req.query) });
