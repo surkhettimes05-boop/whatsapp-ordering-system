@@ -19,6 +19,7 @@ router.post('/retailers/:retailerId/checkout', authenticate, controller.checkout
 router.post('/admin/categories', authenticate, isAdmin, controller.createCategory);
 router.post('/admin/products', authenticate, isAdmin, controller.createProduct);
 router.put('/admin/products/:id', authenticate, isAdmin, controller.updateProduct);
+router.put('/admin/orders/:id/status', authenticate, isAdmin, controller.updateOrderStatus);
 router.get('/admin/sales', authenticate, isAdmin, controller.sales);
 router.get('/admin/reconciliation', authenticate, isAdmin, controller.reconciliation);
 
