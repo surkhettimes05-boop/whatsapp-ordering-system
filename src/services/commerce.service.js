@@ -51,6 +51,10 @@ function serializeProduct(product) {
     mrp: toNumber(product.mrp),
     description: product.description,
     imageUrl: absoluteImageUrl(product.imageUrl),
+    metaRetailerId: product.metaRetailerId || product.sku,
+    savings: product.mrp && Number(product.mrp) > Number(product.fixedPrice)
+      ? Number(product.mrp) - Number(product.fixedPrice)
+      : 0,
     stockStatus,
     availableUnits,
     isActive: product.isActive
@@ -58,16 +62,26 @@ function serializeProduct(product) {
 }
 
 function cartSummary(cart) {
-  const items = (cart.items || []).map(item => ({
-    id: item.id,
-    productId: item.productId,
-    name: item.product.name,
-    sku: item.product.sku,
-    imageUrl: absoluteImageUrl(item.product.imageUrl),
-    quantity: item.quantity,
-    unitPrice: toNumber(item.product.fixedPrice),
-    lineTotal: Number(item.product.fixedPrice) * item.quantity
-  }));
+  const items = (cart.items || []).map(item => {
+    const unitPrice = Number(item.product.fixedPrice);
+    const mrp = item.product.mrp == null ? null : Number(item.product.mrp);
+    return {
+      id: item.id,
+      productId: item.productId,
+      name: item.product.name,
+      sku: item.product.sku,
+      metaRetailerId: item.product.metaRetailerId || item.product.sku,
+      imageUrl: absoluteImageUrl(item.product.imageUrl),
+      quantity: item.quantity,
+      unitPrice,
+      mrp,
+      lineTotal: unitPrice * item.quantity,
+      savings: mrp && mrp > unitPrice ? (mrp - unitPrice) * item.quantity : 0
+    };
+  });
+
+  const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const savings = items.reduce((sum, item) => sum + item.savings, 0);
 
   return {
     id: cart.id,
@@ -76,7 +90,9 @@ function cartSummary(cart) {
     currency: cart.currency,
     items,
     totalItems: items.reduce((sum, item) => sum + item.quantity, 0),
-    totalAmount: items.reduce((sum, item) => sum + item.lineTotal, 0)
+    subtotal,
+    savings,
+    totalAmount: subtotal
   };
 }
 
@@ -187,6 +203,7 @@ class CommerceService {
         mrp: data.mrp == null || data.mrp === '' ? null : Number(data.mrp),
         description: data.description || null,
         imageUrl: data.imageUrl || null,
+        metaRetailerId: data.metaRetailerId || sku,
         isActive: data.isActive !== false
       },
       include: { category: true, wholesalerProducts: true }
@@ -196,7 +213,7 @@ class CommerceService {
 
   async updateProduct(id, data) {
     const update = {};
-    for (const key of ['name', 'brand', 'unit', 'packSize', 'description', 'imageUrl', 'categoryId']) {
+    for (const key of ['name', 'brand', 'unit', 'packSize', 'description', 'imageUrl', 'categoryId', 'metaRetailerId']) {
       if (data[key] !== undefined) update[key] = data[key] || null;
     }
     if (data.sku !== undefined) update.sku = data.sku ? String(data.sku).trim().toUpperCase() : null;
@@ -319,8 +336,11 @@ class CommerceService {
         data: {
           orderNumber: orderNumber(),
           retailerId: data.retailerId,
+          subtotal: totalAmount,
+          discountAmount: 0,
           totalAmount,
           paymentMode,
+          paymentStatus: paymentMode === 'COD' ? 'PENDING' : 'PENDING',
           sourceChannel,
           status: 'CREATED',
           deliveryName: data.deliveryName || cart.retailer.ownerName || cart.retailer.pasalName,
@@ -351,6 +371,266 @@ class CommerceService {
         }))
       };
     });
+  }
+
+  async listOffers(limit = 20) {
+    const products = await prisma.product.findMany({
+      where: { isActive: true, deletedAt: null, mrp: { not: null } },
+      include: {
+        category: true,
+        wholesalerProducts: {
+          where: { isAvailable: true },
+          select: { stock: true, reservedStock: true }
+        }
+      },
+      take: 100
+    });
+    return products
+      .map(serializeProduct)
+      .filter(product => Number(product.savings || 0) > 0)
+      .sort((a, b) => b.savings - a.savings)
+      .slice(0, Math.min(30, Math.max(1, Number(limit || 20))));
+  }
+
+  async replaceCartFromNativeOrder(retailerId, nativeProducts = []) {
+    if (!Array.isArray(nativeProducts) || nativeProducts.length === 0) {
+      throw new Error('Native WhatsApp cart is empty');
+    }
+
+    return prisma.$transaction(async tx => {
+      const cart = await this.getOrCreateCart(retailerId, tx);
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+      for (const item of nativeProducts) {
+        const retailerIdValue = String(item.retailerId || '').trim();
+        const product = await tx.product.findFirst({
+          where: {
+            isActive: true,
+            deletedAt: null,
+            OR: [
+              { metaRetailerId: retailerIdValue },
+              { sku: retailerIdValue }
+            ]
+          }
+        });
+        if (!product) continue;
+        const quantity = Math.max(1, Number(item.quantity || 1));
+        await tx.cartItem.create({
+          data: {
+            cartId: cart.id,
+            productId: product.id,
+            quantity,
+            unitPrice: product.fixedPrice
+          }
+        });
+      }
+
+      const refreshed = await tx.cart.findUnique({
+        where: { id: cart.id },
+        include: { items: { include: { product: true }, orderBy: { createdAt: 'asc' } } }
+      });
+      if (!refreshed.items.length) throw new Error('None of the WhatsApp catalog items matched local SKUs');
+      return cartSummary(refreshed);
+    });
+  }
+
+  async repeatLastOrder(retailerId) {
+    const previous = await prisma.order.findFirst({
+      where: {
+        retailerId,
+        status: { notIn: ['CANCELLED', 'FAILED'] }
+      },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    if (!previous) throw new Error('No previous order found');
+
+    return prisma.$transaction(async tx => {
+      const cart = await this.getOrCreateCart(retailerId, tx);
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      for (const item of previous.items) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, isActive: true, deletedAt: null }
+        });
+        if (!product) continue;
+        await tx.cartItem.create({
+          data: {
+            cartId: cart.id,
+            productId: product.id,
+            quantity: item.quantity,
+            unitPrice: product.fixedPrice
+          }
+        });
+      }
+      const refreshed = await tx.cart.findUnique({
+        where: { id: cart.id },
+        include: { items: { include: { product: true }, orderBy: { createdAt: 'asc' } } }
+      });
+      if (!refreshed.items.length) throw new Error('Previous order products are no longer available');
+      return cartSummary(refreshed);
+    });
+  }
+
+  async getOrderForRetailer(retailerId, reference) {
+    return prisma.order.findFirst({
+      where: {
+        retailerId,
+        OR: [
+          { orderNumber: reference },
+          { id: reference }
+        ]
+      },
+      include: { items: { include: { product: true } } }
+    });
+  }
+
+  async saveAddress(retailerId, data) {
+    if (!data.addressLine1) throw new Error('Address is required');
+    return prisma.$transaction(async tx => {
+      if (data.isDefault !== false) {
+        await tx.commerceAddress.updateMany({
+          where: { retailerId, isDefault: true },
+          data: { isDefault: false }
+        });
+      }
+      const address = await tx.commerceAddress.create({
+        data: {
+          retailerId,
+          label: data.label || 'Home',
+          recipientName: data.recipientName || null,
+          phone: data.phone || null,
+          addressLine1: data.addressLine1,
+          city: data.city || null,
+          district: data.district || null,
+          postalCode: data.postalCode || null,
+          latitude: data.latitude == null ? null : Number(data.latitude),
+          longitude: data.longitude == null ? null : Number(data.longitude),
+          isDefault: data.isDefault !== false
+        }
+      });
+      if (address.isDefault) {
+        await tx.retailer.update({
+          where: { id: retailerId },
+          data: {
+            address: address.addressLine1,
+            city: address.city || undefined,
+            district: address.district || undefined,
+            latitude: address.latitude,
+            longitude: address.longitude
+          }
+        });
+      }
+      return address;
+    });
+  }
+
+  async getAddresses(retailerId) {
+    return prisma.commerceAddress.findMany({
+      where: { retailerId },
+      orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }]
+    });
+  }
+
+  async getDefaultAddress(retailerId) {
+    return prisma.commerceAddress.findFirst({
+      where: { retailerId },
+      orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }]
+    });
+  }
+
+  async checkServiceArea(code) {
+    if (!code) return { configured: false, serviceable: true, area: null };
+    const configured = await prisma.serviceArea.count({ where: { isActive: true } });
+    if (configured === 0) return { configured: false, serviceable: true, area: null };
+    const area = await prisma.serviceArea.findUnique({ where: { code: String(code).trim() } });
+    return { configured: true, serviceable: Boolean(area?.isActive), area };
+  }
+
+  async upsertServiceArea(data) {
+    if (!data.code) throw new Error('Service area code is required');
+    return prisma.serviceArea.upsert({
+      where: { code: String(data.code).trim() },
+      update: {
+        city: data.city || null,
+        district: data.district || null,
+        isActive: data.isActive !== false,
+        minOrder: Number(data.minOrder || 0),
+        deliveryFee: Number(data.deliveryFee || 0),
+        etaText: data.etaText || null
+      },
+      create: {
+        code: String(data.code).trim(),
+        city: data.city || null,
+        district: data.district || null,
+        isActive: data.isActive !== false,
+        minOrder: Number(data.minOrder || 0),
+        deliveryFee: Number(data.deliveryFee || 0),
+        etaText: data.etaText || null
+      }
+    });
+  }
+
+  async listServiceAreas() {
+    return prisma.serviceArea.findMany({ orderBy: [{ isActive: 'desc' }, { code: 'asc' }] });
+  }
+
+  async createSupportTicket(retailerId, data = {}) {
+    const ticketNumber = `WA-SUP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    return prisma.commerceSupportTicket.create({
+      data: {
+        ticketNumber,
+        retailerId,
+        orderId: data.orderId || null,
+        subject: data.subject || 'WhatsApp support request',
+        description: data.description || 'Customer requested support on WhatsApp',
+        priority: data.priority || 'MEDIUM'
+      }
+    });
+  }
+
+  async createOnlinePayment(orderId, provider = null) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error('Order not found');
+    const paymentProvider = provider || process.env.PAYMENT_PROVIDER || 'external';
+    const base = String(process.env.PAYMENT_CHECKOUT_BASE_URL || '').trim();
+    if (!base) throw new Error('Online payment is not configured');
+
+    const separator = base.includes('?') ? '&' : '?';
+    const checkoutUrl = `${base}${separator}order=${encodeURIComponent(order.orderNumber)}&amount=${encodeURIComponent(order.totalAmount.toString())}&currency=NPR`;
+
+    const payment = await prisma.commercePaymentTransaction.create({
+      data: {
+        orderId,
+        provider: paymentProvider,
+        amount: order.totalAmount,
+        status: 'PENDING',
+        checkoutUrl
+      }
+    });
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { paymentMode: 'ONLINE', paymentUrl: checkoutUrl, paymentStatus: 'PENDING' }
+    });
+
+    return payment;
+  }
+
+  async updatePaymentStatus(externalId, status, reference = null) {
+    const payment = await prisma.commercePaymentTransaction.findUnique({ where: { externalId } });
+    if (!payment) throw new Error('Payment transaction not found');
+    const updated = await prisma.commercePaymentTransaction.update({
+      where: { id: payment.id },
+      data: { status }
+    });
+    await prisma.order.update({
+      where: { id: payment.orderId },
+      data: {
+        paymentStatus: status,
+        paymentReference: reference || externalId
+      }
+    });
+    return updated;
   }
 
   async getSalesDashboard(filters = {}) {
