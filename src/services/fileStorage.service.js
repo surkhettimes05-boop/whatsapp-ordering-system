@@ -4,7 +4,7 @@ const prisma = require('../config/database');
 
 class FileStorageService {
   constructor() {
-    this.uploadDir = path.join(__dirname, '../../uploads');
+    this.uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
     this.ensureUploadDir();
   }
 
@@ -36,15 +36,26 @@ class FileStorageService {
   async saveFile(file, entityType, entityId = null, userId = null) {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(7);
-    const ext = path.extname(file.originalname);
+    const safeEntityType = String(entityType || 'misc').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (!safeEntityType) throw new Error('Invalid entity type');
+    const maxBytes = Number(process.env.MAX_UPLOAD_BYTES || 10 * 1024 * 1024);
+    if (!file?.buffer || !file?.originalname || !file?.mimetype) throw new Error('Invalid upload payload');
+    if (file.buffer.length > maxBytes) throw new Error('Upload exceeds maximum allowed size');
+
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '');
     const fileName = `${timestamp}_${random}${ext}`;
-    const filePath = path.join(this.uploadDir, entityType.toLowerCase(), fileName);
+    const storageKey = `${safeEntityType}/${fileName}`;
+    const entityDir = path.join(this.uploadDir, safeEntityType);
+    await fs.mkdir(entityDir, { recursive: true });
+    const filePath = path.join(entityDir, fileName);
 
     // Save file to disk
     await fs.writeFile(filePath, file.buffer);
 
     // Generate URL (relative to uploads directory)
-    const fileUrl = `/uploads/${entityType.toLowerCase()}/${fileName}`;
+    const relativeUrl = `/uploads/${storageKey}`;
+    const base = String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    const fileUrl = base ? `${base}${relativeUrl}` : relativeUrl;
 
     // Save metadata to database
     const mediaFile = await prisma.mediaFile.create({
@@ -54,10 +65,11 @@ class FileStorageService {
         fileUrl: fileUrl,
         fileType: this.getFileType(file.mimetype),
         mimeType: file.mimetype,
-        fileSize: file.size,
-        entityType: entityType.toUpperCase(),
+        fileSize: file.buffer.length,
+        entityType: safeEntityType.toUpperCase(),
         entityId: entityId,
-        uploadedBy: userId
+        uploadedBy: userId,
+        storageKey
       }
     });
 
@@ -70,12 +82,15 @@ class FileStorageService {
   async saveWhatsAppMedia(mediaId, buffer, mimeType) {
     const timestamp = Date.now();
     const ext = this.getExtensionFromMimeType(mimeType);
-    const fileName = `whatsapp_${timestamp}_${mediaId}${ext}`;
-    const filePath = path.join(this.uploadDir, 'whatsapp', fileName);
+    const safeMediaId = String(mediaId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const fileName = `whatsapp_${timestamp}_${safeMediaId}${ext}`;
+    const storageKey = `whatsapp/${fileName}`;
+    const filePath = path.join(this.uploadDir, storageKey);
 
     await fs.writeFile(filePath, buffer);
 
-    const fileUrl = `/uploads/whatsapp/${fileName}`;
+    const base = String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    const fileUrl = base ? `${base}/uploads/${storageKey}` : `/uploads/${storageKey}`;
 
     const mediaFile = await prisma.mediaFile.create({
       data: {
@@ -86,7 +101,8 @@ class FileStorageService {
         mimeType: mimeType,
         fileSize: buffer.length,
         entityType: 'WHATSAPP',
-        entityId: mediaId
+        entityId: mediaId,
+        storageKey
       }
     });
 
@@ -139,7 +155,7 @@ class FileStorageService {
     }
 
     // Delete from disk
-    const filePath = path.join(__dirname, '../../', file.fileUrl);
+    const filePath = path.join(this.uploadDir, file.storageKey);
     try {
       await fs.unlink(filePath);
     } catch (error) {
