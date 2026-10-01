@@ -85,6 +85,13 @@ services:
       mountPath: /var/data
       sizeGB: 10
 
+  - type: keyvalue
+    name: whatsapp-keyvalue
+    plan: 256mb
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
 databases:
   - name: whatsapp-postgres
     databaseName: whatsapp_ordering
