@@ -77,7 +77,8 @@ app.use((req, res, next) => {
 });
 
 // Serve static files (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir, { fallthrough: false, maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0 }));
 
 // Built-in commerce dashboard
 app.get('/commerce-admin', (req, res) => {
