@@ -10,8 +10,7 @@
  * 5. No direct updates to balance fields
  */
 
-const { PrismaClient } = require('@prisma/client');
-import prisma from '../config/prismaClient.js';
+const prisma = require('../config/prismaClient');
 
 class CreditCheckService {
   

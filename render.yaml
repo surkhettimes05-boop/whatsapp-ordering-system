@@ -1,11 +1,9 @@
 services:
-  # Backend API Service
   - type: web
     name: whatsapp-ordering-backend
     runtime: node
     plan: starter
-    rootDir: backend
-    buildCommand: npm install && npx prisma generate
+    buildCommand: npm ci && npx prisma generate
     startCommand: npx prisma migrate deploy && node src/app.js
     envVars:
       - key: NODE_ENV
@@ -17,7 +15,7 @@ services:
           name: whatsapp-postgres
           property: connectionString
       - key: JWT_SECRET
-        value: whatsapp_ordering_super_secure_jwt_secret_key_production_2026_render_deployment
+        sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
@@ -38,7 +36,6 @@ services:
         value: "*"
     healthCheckPath: /health
 
-  # Frontend Admin Dashboard
   - type: web
     name: whatsapp-ordering-frontend
     runtime: static

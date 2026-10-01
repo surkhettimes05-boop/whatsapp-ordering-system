@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: whatsapp_backend
     restart: always
@@ -15,7 +15,6 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/whatsapp_ordering?schema=public
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # Add other env vars here or use .env file
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,7 +36,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5

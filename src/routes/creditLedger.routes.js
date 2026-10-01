@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const creditCheckService = require('../services/creditCheck.service');
 const ledgerService = require('../services/ledgerEntry.service');
+const prisma = require('../config/prismaClient');
 const { 
   requireCreditAdmin, 
   validateCreditConfig 
@@ -89,9 +90,6 @@ router.post('/setup',
           error: 'Missing: retailerId, wholesalerId, creditLimit',
         });
       }
-
-      const { PrismaClient } = require('@prisma/client');
-      import prisma from '../config/prismaClient.js';
 
       const config = await prisma.retailerWholesalerCredit.upsert({
         where: {
