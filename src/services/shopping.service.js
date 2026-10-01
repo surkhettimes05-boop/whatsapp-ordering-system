@@ -359,6 +359,12 @@ class ShoppingService {
         include: { retailer: true, items: { include: { product: true } } }
       });
       if (!cart || !cart.items.length) throw new Error('Cart is empty');
+      const liveSubtotal = cart.items.reduce((sum, item) => sum + n(item.product.fixedPrice) * item.quantity, 0);
+      if (Math.abs(liveSubtotal - quote.subtotal) > 0.001) {
+        throw new Error('Cart changed during checkout. Please review the cart again.');
+      }
+      const unavailable = cart.items.find(item => !item.product.isActive || item.product.deletedAt);
+      if (unavailable) throw new Error(`Product is no longer available: ${unavailable.product.name}`);
 
       const claimed = await tx.cart.updateMany({
         where: { id: cart.id, activeKey: retailerId, status: 'ACTIVE' },
