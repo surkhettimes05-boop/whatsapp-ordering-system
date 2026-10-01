@@ -163,6 +163,13 @@ class CommerceService {
   async listCategories() {
     return prisma.category.findMany({
       where: { isActive: true },
+      include: {
+        parent: true,
+        children: {
+          where: { isActive: true },
+          orderBy: { name: 'asc' }
+        }
+      },
       orderBy: { name: 'asc' }
     });
   }
@@ -174,7 +181,12 @@ class CommerceService {
     const existing = await prisma.category.findUnique({ where: { slug } });
     if (existing) slug = `${slug}-${Date.now().toString().slice(-6)}`;
     return prisma.category.create({
-      data: { name: data.name.trim(), slug, description: data.description || null }
+      data: {
+        name: data.name.trim(),
+        slug,
+        description: data.description || null,
+        parentId: data.parentId || null
+      }
     });
   }
 
