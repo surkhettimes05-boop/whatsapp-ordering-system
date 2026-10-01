@@ -1,4 +1,4 @@
-if (process.env.NODE_ENV === 'test') {
+if (process.env.NODE_ENV === 'test' && process.env.USE_REAL_DATABASE !== 'true') {
   console.warn('⚠️ Using in-memory Prisma mock for tests');
 
   // Simple in-memory mock for Prisma used in tests

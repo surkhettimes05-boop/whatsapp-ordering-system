@@ -17,7 +17,9 @@
     "setup": "npm install && npx prisma generate && node check-setup.js",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "smoke:production": "node scripts/production-smoke.js",
-    "smoke:providers": "node scripts/provider-smoke.js"
+    "smoke:providers": "node scripts/provider-smoke.js",
+    "seed:free-test": "node scripts/seed-free-test.js",
+    "smoke:cod-flow": "node scripts/cod-flow-smoke.js"
   },
   "keywords": [],
   "author": "",

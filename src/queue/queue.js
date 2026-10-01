@@ -10,6 +10,14 @@ let connection;
 
 // Try to load BullMQ and ioredis; provide safe in-memory stubs for tests
 try {
+    const shouldUseInMemoryQueue =
+        process.env.NODE_ENV === 'test' ||
+        (process.env.NODE_ENV !== 'production' && !process.env.REDIS_URL && !process.env.REDIS_HOST);
+
+    if (shouldUseInMemoryQueue) {
+        throw new Error('In-memory queue requested for test/local environment');
+    }
+
     ({ Queue, QueueEvents } = require('bullmq'));
     IORedis = require('ioredis');
 
@@ -43,7 +51,7 @@ try {
     });
 } catch (e) {
     // Provide in-memory stub implementations when BullMQ/ioredis are unavailable
-    console.warn('⚠️  BullMQ / ioredis not available — using in-memory queue stubs');
+    console.warn('⚠️  Redis queue unavailable/not configured — using in-memory queue stubs');
 
     class InMemoryQueue {
         constructor(name) { this.name = name; this.jobs = []; }
