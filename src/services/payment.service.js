@@ -79,7 +79,7 @@ class PaymentService {
     const root = baseUrl();
     const amountPaisa = Math.round(Number(order.totalAmount) * 100);
     const payload = {
-      return_url: `${root}/api/v1/commerce/payments/khalti/callback`,
+      return_url: `${root}/api/v1/shopping/payments/khalti/callback`,
       website_url: root,
       amount: amountPaisa,
       purchase_order_id: order.orderNumber,
@@ -200,8 +200,8 @@ class PaymentService {
       product_code: process.env.ESEWA_PRODUCT_CODE,
       product_service_charge: '0',
       product_delivery_charge: '0',
-      success_url: `${root}/api/v1/commerce/payments/esewa/success`,
-      failure_url: `${root}/api/v1/commerce/payments/esewa/failure`,
+      success_url: `${root}/api/v1/shopping/payments/esewa/success`,
+      failure_url: `${root}/api/v1/shopping/payments/esewa/failure`,
       signed_field_names: 'total_amount,transaction_uuid,product_code'
     };
     fields.signature = this.esewaSignature(fields);
@@ -217,7 +217,7 @@ class PaymentService {
       }
     });
 
-    const checkoutUrl = `${root}/api/v1/commerce/payments/esewa/${payment.id}/pay`;
+    const checkoutUrl = `${root}/api/v1/shopping/payments/esewa/${payment.id}/pay`;
     const updated = await prisma.commercePaymentTransaction.update({
       where: { id: payment.id },
       data: { checkoutUrl }
