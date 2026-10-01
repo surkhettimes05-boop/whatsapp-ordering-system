@@ -57,6 +57,9 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
+      - name: Check migrated database for Prisma drift
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
