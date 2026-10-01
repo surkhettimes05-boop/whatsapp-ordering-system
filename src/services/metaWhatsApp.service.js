@@ -106,6 +106,26 @@ async function sendList(to, body, buttonText, sections, options = {}) {
   });
 }
 
+async function sendCtaUrl(to, body, displayText, url, options = {}) {
+  return graphSend({
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'cta_url',
+      ...(options.header ? { header: { type: 'text', text: String(options.header).slice(0, 60) } } : {}),
+      body: { text: String(body).slice(0, 1024) },
+      ...(options.footer ? { footer: { text: String(options.footer).slice(0, 60) } } : {}),
+      action: {
+        name: 'cta_url',
+        parameters: {
+          display_text: String(displayText || 'Open').slice(0, 20),
+          url
+        }
+      }
+    }
+  });
+}
+
 async function sendProduct(to, productRetailerId, body = 'View product') {
   if (!catalogId) throw new Error('META_CATALOG_ID is not configured');
   return graphSend({
@@ -248,6 +268,7 @@ module.exports = {
   sendImage,
   sendButtons,
   sendList,
+  sendCtaUrl,
   sendProduct,
   sendProductList,
   sendTemplate,
