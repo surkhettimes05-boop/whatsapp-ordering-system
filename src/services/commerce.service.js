@@ -133,7 +133,9 @@ class CommerceService {
       where.OR = [
         { name: { contains: filters.search, mode: 'insensitive' } },
         { brand: { contains: filters.search, mode: 'insensitive' } },
-        { sku: { contains: filters.search, mode: 'insensitive' } }
+        { sku: { contains: filters.search, mode: 'insensitive' } },
+        { description: { contains: filters.search, mode: 'insensitive' } },
+        { packSize: { contains: filters.search, mode: 'insensitive' } }
       ];
     }
 
@@ -170,7 +172,7 @@ class CommerceService {
           orderBy: { name: 'asc' }
         }
       },
-      orderBy: { name: 'asc' }
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }]
     });
   }
 
@@ -185,7 +187,9 @@ class CommerceService {
         name: data.name.trim(),
         slug,
         description: data.description || null,
-        parentId: data.parentId || null
+        imageUrl: data.imageUrl || null,
+        parentId: data.parentId || null,
+        sortOrder: Number(data.sortOrder || 0)
       }
     });
   }
