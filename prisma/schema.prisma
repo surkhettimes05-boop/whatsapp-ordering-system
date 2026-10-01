@@ -323,7 +323,9 @@ model Category {
 	name        String     @unique
 	slug        String     @unique
 	description String?
+	imageUrl    String?
 	parentId    String?
+	sortOrder   Int        @default(0)
 	isActive    Boolean    @default(true)
 	createdAt   DateTime   @default(now())
 	updatedAt   DateTime   @updatedAt
@@ -333,6 +335,7 @@ model Category {
   
 	@@index([slug])
 	@@index([parentId])
+	@@index([sortOrder])
 	@@index([isActive])
 	@@map("categories")
 }
@@ -405,12 +408,16 @@ model Order {
 	finalWholesalerId   String?            // ENFORCED: One winning wholesaler (via unique constraint)
 	subtotal            Decimal            @default(0)
 	discountAmount       Decimal            @default(0)
+	deliveryFee          Decimal            @default(0)
+	savingsAmount        Decimal            @default(0)
 	totalAmount          Decimal
 	paymentMode          PaymentMode        @default(COD)
 	paymentStatus        PaymentStatus      @default(PENDING)
+	paymentProvider      String?
 	paymentReference     String?
 	paymentUrl           String?
 	couponCode           String?
+	serviceAreaCode      String?
 	sourceChannel        OrderChannel       @default(WHATSAPP)
 	status              OrderStatus        @default(CREATED)
 	deliveryName        String?
@@ -476,6 +483,9 @@ model Cart {
 	activeKey      String?    @unique
 	status         CartStatus @default(ACTIVE)
 	currency       String     @default("NPR")
+	couponCode     String?
+	selectedAddressId String?
+	paymentProvider String?
 	checkoutOrderId String?
 	checkedOutAt   DateTime?
 	createdAt      DateTime   @default(now())
@@ -1038,6 +1048,7 @@ model CommerceAddress {
 	latitude      Float?
 	longitude     Float?
 	isDefault     Boolean  @default(false)
+	isActive      Boolean  @default(true)
 	createdAt     DateTime @default(now())
 	updatedAt     DateTime @updatedAt
 	retailer      Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
@@ -1051,8 +1062,11 @@ model CommerceAddress {
 model ServiceArea {
 	id          String   @id @default(cuid())
 	code        String   @unique
+	name        String?
 	city        String?
 	district    String?
+	postalCode  String?
+	keywords    String?
 	isActive    Boolean  @default(true)
 	minOrder    Decimal  @default(0)
 	deliveryFee Decimal  @default(0)
@@ -1062,7 +1076,52 @@ model ServiceArea {
 
 	@@index([isActive])
 	@@index([city])
+	@@index([district])
+	@@index([postalCode])
 	@@map("service_areas")
+}
+
+model CommerceOffer {
+	id               String   @id @default(cuid())
+	code             String?  @unique
+	title            String
+	description      String?
+	type             String
+	value            Decimal
+	minOrderAmount   Decimal  @default(0)
+	maxDiscount      Decimal?
+	categoryId       String?
+	productId        String?
+	autoApply        Boolean  @default(false)
+	usageLimit       Int?
+	perCustomerLimit Int      @default(1)
+	startsAt         DateTime @default(now())
+	endsAt           DateTime
+	isActive         Boolean  @default(true)
+	createdAt        DateTime @default(now())
+	updatedAt        DateTime @updatedAt
+	redemptions      CommerceOfferRedemption[]
+
+	@@index([code])
+	@@index([isActive, startsAt, endsAt])
+	@@index([categoryId])
+	@@index([productId])
+	@@map("commerce_offers")
+}
+
+model CommerceOfferRedemption {
+	id          String        @id @default(cuid())
+	offerId     String
+	retailerId  String
+	orderId     String
+	amount      Decimal
+	createdAt   DateTime      @default(now())
+	offer       CommerceOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+	@@index([offerId])
+	@@index([retailerId])
+	@@index([orderId])
+	@@map("commerce_offer_redemptions")
 }
 
 model CommercePaymentTransaction {

@@ -40,6 +40,16 @@ services:
         value: external
       - key: PAYMENT_CHECKOUT_BASE_URL
         sync: false
+      - key: KHALTI_ENV
+        value: sandbox
+      - key: KHALTI_SECRET_KEY
+        sync: false
+      - key: ESEWA_ENV
+        value: sandbox
+      - key: ESEWA_PRODUCT_CODE
+        sync: false
+      - key: ESEWA_SECRET_KEY
+        sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN

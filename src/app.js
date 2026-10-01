@@ -80,6 +80,7 @@ try {
   app.use('/api/v1/products', require('./routes/product.routes'));
   app.use('/api/v1/categories', require('./routes/category.routes'));
   app.use('/api/v1/commerce', require('./routes/commerce.routes'));
+  app.use('/api/v1/shopping', require('./routes/shopping.routes'));
 
   console.log('⏳ Loading Address and Order routes...');
   app.use('/api/v1/addresses', require('./routes/address.routes'));
