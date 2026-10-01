@@ -213,23 +213,60 @@ class CommerceWhatsAppController {
   }
 
   async handleAction(retailer, phone, actionId) {
-    if (actionId === 'menu_catalog') return this.sendCatalog(phone), true;
-    if (actionId === 'menu_categories') return this.sendCategories(phone), true;
-    if (actionId === 'menu_offers') return this.sendOffers(phone), true;
-    if (actionId === 'menu_cart') return this.sendCart(retailer, phone), true;
-    if (actionId === 'menu_orders') return this.sendOrders(retailer, phone), true;
-    if (actionId === 'menu_repeat') return this.repeatLastOrder(retailer, phone), true;
-    if (actionId === 'menu_address') return this.showAddress(retailer, phone), true;
-    if (actionId === 'menu_support') return this.startSupport(retailer, phone), true;
-    if (actionId === 'checkout_start') return this.beginCheckout(retailer, phone), true;
+    if (actionId === 'menu_catalog') {
+      await this.sendCatalog(phone);
+      return true;
+    }
+    if (actionId === 'menu_categories') {
+      await this.sendCategories(phone);
+      return true;
+    }
+    if (actionId === 'menu_offers') {
+      await this.sendOffers(phone);
+      return true;
+    }
+    if (actionId === 'menu_cart') {
+      await this.sendCart(retailer, phone);
+      return true;
+    }
+    if (actionId === 'menu_orders') {
+      await this.sendOrders(retailer, phone);
+      return true;
+    }
+    if (actionId === 'menu_repeat') {
+      await this.repeatLastOrder(retailer, phone);
+      return true;
+    }
+    if (actionId === 'menu_address') {
+      await this.showAddress(retailer, phone);
+      return true;
+    }
+    if (actionId === 'menu_support') {
+      await this.startSupport(retailer, phone);
+      return true;
+    }
+    if (actionId === 'checkout_start') {
+      await this.beginCheckout(retailer, phone);
+      return true;
+    }
     if (actionId === 'address_use') {
       const addresses = await shoppingService.listAddresses(retailer.id);
       const address = addresses.find(item => item.isDefault) || addresses[0];
-      if (!address) return this.askForAddress(retailer, phone), true;
-      return this.showCheckoutReview(retailer, phone, address), true;
+      if (!address) {
+        await this.askForAddress(retailer, phone);
+        return true;
+      }
+      await this.showCheckoutReview(retailer, phone, address);
+      return true;
     }
-    if (actionId === 'address_change') return this.showAddress(retailer, phone), true;
-    if (actionId === 'address_new') return this.askForAddress(retailer, phone), true;
+    if (actionId === 'address_change') {
+      await this.showAddress(retailer, phone);
+      return true;
+    }
+    if (actionId === 'address_new') {
+      await this.askForAddress(retailer, phone);
+      return true;
+    }
     if (actionId.startsWith('address_select:')) {
       const id = actionId.slice('address_select:'.length);
       const address = await shoppingService.setDefaultAddress(retailer.id, id);
@@ -243,11 +280,26 @@ class CommerceWhatsAppController {
       );
       return true;
     }
-    if (actionId === 'checkout_review') return this.choosePayment(retailer, phone), true;
-    if (actionId === 'checkout_cod') return this.placeOrder(retailer, phone, null), true;
-    if (actionId === 'checkout_khalti') return this.placeOrder(retailer, phone, 'khalti'), true;
-    if (actionId === 'checkout_esewa') return this.placeOrder(retailer, phone, 'esewa'), true;
-    if (actionId === 'checkout_online') return this.choosePayment(retailer, phone), true;
+    if (actionId === 'checkout_review') {
+      await this.choosePayment(retailer, phone);
+      return true;
+    }
+    if (actionId === 'checkout_cod') {
+      await this.placeOrder(retailer, phone, null);
+      return true;
+    }
+    if (actionId === 'checkout_khalti') {
+      await this.placeOrder(retailer, phone, 'khalti');
+      return true;
+    }
+    if (actionId === 'checkout_esewa') {
+      await this.placeOrder(retailer, phone, 'esewa');
+      return true;
+    }
+    if (actionId === 'checkout_online') {
+      await this.choosePayment(retailer, phone);
+      return true;
+    }
     if (actionId === 'checkout_cancel') {
       await conversationService.clearState(retailer.id);
       await whatsappService.sendMessage(phone, 'Checkout cancelled. Your cart is still saved.', { immediate: true });
@@ -255,7 +307,8 @@ class CommerceWhatsAppController {
     }
     if (actionId.startsWith('category:')) {
       const categoryId = actionId.slice('category:'.length);
-      return this.sendCategory(phone, categoryId), true;
+      await this.sendCategory(phone, categoryId);
+      return true;
     }
     return false;
   }
