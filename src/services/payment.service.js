@@ -316,14 +316,34 @@ class PaymentService {
         metadata: providerResponse ? safeJson(providerResponse) : payment.metadata
       }
     });
-    await prisma.order.update({
+    const order = await prisma.order.update({
       where: { id: payment.orderId },
       data: {
         paymentStatus: status,
         paymentReference: reference || payment.externalId,
         paymentProvider: payment.provider
-      }
+      },
+      include: { retailer: true }
     });
+
+    if (order.retailer?.whatsappNumber && ['PAID','FAILED','CANCELLED','REFUNDED'].includes(status)) {
+      setImmediate(async () => {
+        try {
+          const whatsappService = require('./whatsapp.service');
+          const labels = {
+            PAID: '✅ Payment received',
+            FAILED: '❌ Payment failed',
+            CANCELLED: '⚠️ Payment cancelled',
+            REFUNDED: '↩️ Payment refunded'
+          };
+          await whatsappService.sendMessage(
+            order.retailer.whatsappNumber,
+            `${labels[status]} for order *${order.orderNumber}*.\nProvider: ${payment.provider.toUpperCase()}\nAmount: Rs. ${order.totalAmount}`,
+            { immediate: true }
+          );
+        } catch {}
+      });
+    }
     return updated;
   }
 }
