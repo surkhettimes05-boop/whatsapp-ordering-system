@@ -41,3 +41,6 @@ jobs:
 
       - name: Load application in test mode
         run: node -e "const app=require('./src/app'); if (!app) process.exit(1); process.exit(0)"
+
+      - name: Run commerce module test
+        run: npx jest __tests__/commerce.module.test.js --runInBand
