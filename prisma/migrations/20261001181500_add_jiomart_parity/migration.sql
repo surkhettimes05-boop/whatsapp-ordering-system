@@ -1,3 +1,9 @@
+ALTER TABLE "categories" ADD COLUMN "parentId" TEXT;
+CREATE INDEX "categories_parentId_idx" ON "categories"("parentId");
+ALTER TABLE "categories"
+  ADD CONSTRAINT "categories_parentId_fkey"
+  FOREIGN KEY ("parentId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
 -- JioMart-style WhatsApp parity: Meta catalog identity, saved addresses,
 -- serviceability, online-payment attempts, support tickets and webhook idempotency.
 
