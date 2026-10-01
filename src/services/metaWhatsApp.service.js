@@ -1,16 +1,17 @@
 const crypto = require('crypto');
 const { logger } = require('../config/logger');
 
-const graphVersion = process.env.META_GRAPH_VERSION || 'v26.0';
+const graphVersion = process.env.META_GRAPH_VERSION;
 const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
 const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
 const catalogId = process.env.META_CATALOG_ID;
 
 function configured() {
-  return Boolean(phoneNumberId && accessToken);
+  return Boolean(graphVersion && phoneNumberId && accessToken);
 }
 
 function endpoint() {
+  if (!graphVersion) throw new Error('META_GRAPH_VERSION is not configured');
   if (!phoneNumberId) throw new Error('META_WHATSAPP_PHONE_NUMBER_ID is not configured');
   return `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
 }
