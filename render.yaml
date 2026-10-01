@@ -14,6 +14,11 @@ services:
         fromDatabase:
           name: whatsapp-postgres
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: whatsapp-keyvalue
+          property: connectionString
       - key: JWT_SECRET
         sync: false
       - key: PUBLIC_BASE_URL
@@ -41,11 +46,11 @@ services:
       - key: PAYMENT_CHECKOUT_BASE_URL
         sync: false
       - key: KHALTI_ENV
-        value: sandbox
+        value: production
       - key: KHALTI_SECRET_KEY
         sync: false
       - key: ESEWA_ENV
-        value: sandbox
+        value: production
       - key: ESEWA_PRODUCT_CODE
         sync: false
       - key: ESEWA_SECRET_KEY
@@ -67,8 +72,18 @@ services:
       - key: ENABLE_LAUNCH_CONTROL
         value: true
       - key: CORS_ORIGIN
-        value: "*"
+        sync: false
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: MAX_UPLOAD_BYTES
+        value: "10485760"
+      - key: REQUIRE_LIVE_PAYMENTS
+        value: "true"
     healthCheckPath: /health
+    disk:
+      name: media
+      mountPath: /var/data
+      sizeGB: 10
 
 databases:
   - name: whatsapp-postgres
