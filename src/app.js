@@ -83,7 +83,6 @@ try {
   app.use('/api/v1/shopping', require('./routes/shopping.routes'));
 
   console.log('⏳ Loading Address and Order routes...');
-  app.use('/api/v1/addresses', require('./routes/address.routes'));
   app.use('/api/v1/orders', require('./routes/order.routes'));
 
   console.log('⏳ Loading WhatsApp routes...');

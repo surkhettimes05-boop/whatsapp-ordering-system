@@ -109,6 +109,18 @@ form{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.wide{grid-column
 </div>
 </div>
 
+<div class="card" style="margin-top:14px">
+<h2>Create category / subcategory</h2>
+<form id="categoryForm">
+<input id="catName" placeholder="Category name" required/>
+<select id="catParent"><option value="">Top level category</option></select>
+<input id="catImage" type="url" placeholder="Category image URL (optional)"/>
+<input id="catSort" type="number" value="0" placeholder="Sort order"/>
+<input id="catDescription" class="wide" placeholder="Description"/>
+<button class="wide">Create category</button><div id="catMsg" class="full"></div>
+</form>
+</div>
+
 <div class="card" style="margin-top:14px"><h2>Service areas</h2><table><thead><tr><th>Code</th><th>Area</th><th>Minimum</th><th>Fee</th><th>ETA</th></tr></thead><tbody id="serviceAreaRows"></tbody></table></div>
 <div class="card" style="margin-top:14px"><h2>Offers</h2><table><thead><tr><th>Offer</th><th>Code</th><th>Type</th><th>Value</th><th>Minimum</th><th>Ends</th></tr></thead><tbody id="offerRows"></tbody></table></div>
 </div>
@@ -124,9 +136,10 @@ $('#logout').onclick=()=>{sessionStorage.removeItem('commerceToken');location.re
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.className='tab ghost');b.className='tab active';$('#salesView').classList.toggle('hidden',b.dataset.view!=='sales');$('#catalogView').classList.toggle('hidden',b.dataset.view!=='catalog');$('#setupView').classList.toggle('hidden',b.dataset.view!=='setup')})
 async function loadSales(){try{const d=await api('/api/v1/commerce/admin/sales?range='+$('#range').value);$('#sales').textContent=money(d.sales);$('#orders').textContent=d.deliveredOrders;$('#units').textContent=d.unitsSold;$('#aov').textContent=money(d.averageOrderValue);$('#topProducts').innerHTML=d.topProducts.map(x=>'<tr><td>'+(x.sku||'—')+'</td><td>'+esc(x.name)+'</td><td>'+x.quantity+'</td><td>'+money(x.sales)+'</td></tr>').join('')||'<tr><td colspan=4 class=muted>No delivered sales yet</td></tr>';$('#statuses').innerHTML=Object.entries(d.orderStatus).map(([k,v])=>'<div class="toolbar"><span>'+k.replaceAll('_',' ')+'</span><b>'+v+'</b></div>').join('')||'<div class=muted>No orders</div>';$('#recentOrders').innerHTML=d.recentOrders.map(x=>'<tr><td>'+esc(x.orderNumber)+'</td><td>'+esc(x.customer)+'</td><td>'+x.sourceChannel+'</td><td><span class=status>'+x.status+'</span></td><td>'+money(x.totalAmount)+'</td><td>'+actionButton(x)+'</td></tr>').join('');await loadRecon()}catch(e){console.error(e)}}
 async function loadRecon(){const date=$('#reconDate').value; if(!date)return;const d=await api('/api/v1/commerce/admin/reconciliation?date='+date);$('#reconSummary').textContent=d.deliveredOrders+' delivered orders • '+d.totalUnits+' units • '+money(d.netSales);$('#recon').innerHTML=d.items.map(x=>'<tr><td>'+(x.sku||'—')+'</td><td>'+esc(x.name)+'</td><td><b>'+x.quantity+'</b></td><td>'+money(x.salesAmount)+'</td></tr>').join('')||'<tr><td colspan=4 class=muted>No delivered sales for this date</td></tr>'}
-async function loadCategories(){try{const d=await api('/api/v1/commerce/categories');$('#category').innerHTML=d.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('')}catch(e){console.error(e)}}
+async function loadCategories(){try{const d=await api('/api/v1/commerce/categories');const options=d.map(x=>'<option value="'+x.id+'">'+(x.parentId?'↳ ':'')+esc(x.name)+'</option>').join('');$('#category').innerHTML=options;const parent=$('#catParent');if(parent)parent.innerHTML='<option value="">Top level category</option>'+options}catch(e){console.error(e)}}
 async function loadCatalog(){try{const d=await api('/api/v1/commerce/catalog?limit=50');$('#productGrid').innerHTML=d.products.map(p=>'<div class="card product">'+(p.imageUrl?'<img src="'+attr(p.imageUrl)+'" alt="">':'<div style="aspect-ratio:1.2;display:grid;place-items:center;background:#13251a;border-radius:12px" class=muted>No image</div>')+'<h3>'+esc(p.name)+'</h3><div class=muted>'+(p.brand?esc(p.brand)+' • ':'')+(p.sku||'No SKU')+'</div><div><span class=price>'+money(p.price)+'</span>'+(p.mrp?'<span class=strike>'+money(p.mrp)+'</span>':'')+'</div><div class=muted>'+p.stockStatus+(p.packSize?' • '+esc(p.packSize):'')+'</div></div>').join('')}catch(e){console.error(e)}}
 $('#productForm').onsubmit=async e=>{e.preventDefault();const body={sku:$('#sku').value,name:$('#pname').value,brand:$('#brand').value,categoryId:$('#category').value,fixedPrice:$('#price').value,mrp:$('#mrp').value,unit:$('#unit').value,packSize:$('#packSize').value,imageUrl:$('#imageUrl').value,description:$('#description').value};try{await api('/api/v1/commerce/admin/products',{method:'POST',body:JSON.stringify(body)});$('#productMsg').className='full success';$('#productMsg').textContent='Product added';e.target.reset();await loadCategories();await loadCatalog()}catch(err){$('#productMsg').className='full error';$('#productMsg').textContent=err.message}}
+$('#categoryForm').onsubmit=async e=>{e.preventDefault();const body={name:$('#catName').value,parentId:$('#catParent').value||null,imageUrl:$('#catImage').value||null,sortOrder:Number($('#catSort').value||0),description:$('#catDescription').value||null};try{await api('/api/v1/commerce/admin/categories',{method:'POST',body:JSON.stringify(body)});$('#catMsg').className='full success';$('#catMsg').textContent='Category created';e.target.reset();await loadCategories()}catch(err){$('#catMsg').className='full error';$('#catMsg').textContent=err.message}}
 async function loadSetup(){try{
 const [providers,areas,offers]=await Promise.all([
 api('/api/v1/shopping/payments/providers'),
