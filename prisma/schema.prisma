@@ -135,6 +135,20 @@ enum WebhookStatus {
 	RETRYING
 }
 
+enum SupportTicketStatus {
+	OPEN
+	IN_PROGRESS
+	RESOLVED
+	CLOSED
+}
+
+enum SupportPriority {
+	LOW
+	MEDIUM
+	HIGH
+	URGENT
+}
+
 // ============================================================================
 // USER & AUTHENTICATION MODELS
 // ============================================================================
@@ -227,6 +241,8 @@ model Retailer {
 	wholesalerCredits  RetailerWholesalerCredit[]
 	ratings            WholesalerRating[]
 	carts              Cart[]
+	addresses          CommerceAddress[]
+	commerceSupportTickets CommerceSupportTicket[]
   
 	@@index([phoneNumber])
 	@@index([whatsappNumber])
@@ -303,16 +319,20 @@ model Wholesaler {
 // ============================================================================
 
 model Category {
-	id       String    @id @default(cuid())
-	name     String    @unique
-	slug     String    @unique
+	id          String     @id @default(cuid())
+	name        String     @unique
+	slug        String     @unique
 	description String?
-	isActive Boolean   @default(true)
-	createdAt DateTime @default(now())
-	updatedAt DateTime @updatedAt
-	products Product[]
+	parentId    String?
+	isActive    Boolean    @default(true)
+	createdAt   DateTime   @default(now())
+	updatedAt   DateTime   @updatedAt
+	products    Product[]
+	parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+	children    Category[] @relation("CategoryTree")
   
 	@@index([slug])
+	@@index([parentId])
 	@@index([isActive])
 	@@map("categories")
 }
@@ -330,6 +350,7 @@ model Product {
 	mrp                Decimal?
 	description        String?
 	imageUrl           String?
+	metaRetailerId     String?             @unique
 	isActive           Boolean             @default(true)
 	deletedAt          DateTime?           // Soft delete
 	createdAt          DateTime            @default(now())
@@ -382,9 +403,15 @@ model Order {
 	retailerId          String
 	wholesalerId        String?            // Assigned wholesaler
 	finalWholesalerId   String?            // ENFORCED: One winning wholesaler (via unique constraint)
-	totalAmount         Decimal
-	paymentMode         PaymentMode        @default(COD)
-	sourceChannel       OrderChannel       @default(WHATSAPP)
+	subtotal            Decimal            @default(0)
+	discountAmount       Decimal            @default(0)
+	totalAmount          Decimal
+	paymentMode          PaymentMode        @default(COD)
+	paymentStatus        PaymentStatus      @default(PENDING)
+	paymentReference     String?
+	paymentUrl           String?
+	couponCode           String?
+	sourceChannel        OrderChannel       @default(WHATSAPP)
 	status              OrderStatus        @default(CREATED)
 	deliveryName        String?
 	deliveryPhone       String?
@@ -412,6 +439,8 @@ model Order {
 	conflictLogs        DecisionConflictLog[]
 	ledgerEntries       LedgerEntry[]
 	orderImages         OrderImage[]
+	paymentTransactions CommercePaymentTransaction[]
+	commerceSupportTickets CommerceSupportTicket[]
   
 
 	@@index([retailerId])
@@ -994,4 +1023,103 @@ model LaunchControlAlert {
 	@@index([severity])
 	@@index([status])
 	@@map("launch_control_alerts")
+}
+
+model CommerceAddress {
+	id            String   @id @default(cuid())
+	retailerId    String
+	label         String   @default("Home")
+	recipientName String?
+	phone         String?
+	addressLine1  String
+	city          String?
+	district      String?
+	postalCode    String?
+	latitude      Float?
+	longitude     Float?
+	isDefault     Boolean  @default(false)
+	createdAt     DateTime @default(now())
+	updatedAt     DateTime @updatedAt
+	retailer      Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+
+	@@index([retailerId])
+	@@index([retailerId, isDefault])
+	@@index([postalCode])
+	@@map("commerce_addresses")
+}
+
+model ServiceArea {
+	id          String   @id @default(cuid())
+	code        String   @unique
+	city        String?
+	district    String?
+	isActive    Boolean  @default(true)
+	minOrder    Decimal  @default(0)
+	deliveryFee Decimal  @default(0)
+	etaText     String?
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
+
+	@@index([isActive])
+	@@index([city])
+	@@map("service_areas")
+}
+
+model CommercePaymentTransaction {
+	id          String        @id @default(cuid())
+	orderId     String
+	provider    String
+	amount      Decimal
+	currency    String        @default("NPR")
+	status      PaymentStatus @default(PENDING)
+	externalId  String?       @unique
+	checkoutUrl String?
+	metadata    String?
+	createdAt   DateTime      @default(now())
+	updatedAt   DateTime      @updatedAt
+	order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+	@@index([orderId])
+	@@index([status])
+	@@index([provider])
+	@@map("commerce_payment_transactions")
+}
+
+model CommerceSupportTicket {
+	id           String              @id @default(cuid())
+	ticketNumber String              @unique
+	retailerId   String
+	orderId      String?
+	subject      String
+	description  String
+	status       SupportTicketStatus @default(OPEN)
+	priority     SupportPriority     @default(MEDIUM)
+	resolution   String?
+	createdAt    DateTime            @default(now())
+	updatedAt    DateTime            @updatedAt
+	resolvedAt   DateTime?
+	retailer     Retailer            @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+	order        Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+	@@index([retailerId])
+	@@index([orderId])
+	@@index([status])
+	@@index([createdAt])
+	@@map("commerce_support_tickets")
+}
+
+model WhatsAppInboundEvent {
+	id                String   @id @default(cuid())
+	providerMessageId String   @unique
+	provider          String
+	sender            String?
+	messageType       String?
+	payload           String
+	processedAt       DateTime?
+	createdAt         DateTime @default(now())
+
+	@@index([provider])
+	@@index([sender])
+	@@index([createdAt])
+	@@map("whatsapp_inbound_events")
 }
