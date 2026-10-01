@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 require('dotenv').config();
+const { assertProductionConfiguration } = require('./config/production-readiness');
+assertProductionConfiguration();
 
 // Import middleware
 const { requestLogger, logger } = require('./config/logger');
@@ -26,7 +28,26 @@ try {
 }
 
 app.use(securityHeaders);
-app.use(cors());
+const configuredOrigins = String(process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' && configuredOrigins.length === 0) {
+      return callback(null, true);
+    }
+    if (configuredOrigins.includes(origin)) return callback(null, true);
+    const error = new Error('Origin not allowed by CORS policy');
+    error.status = 403;
+    return callback(error);
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-ID']
+}));
 app.use(compress);
 app.use(express.json({
   verify: (req, res, buffer) => {
@@ -56,7 +77,8 @@ app.use((req, res, next) => {
 });
 
 // Serve static files (uploads)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir, { fallthrough: false, maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0 }));
 
 // Built-in commerce dashboard
 app.get('/commerce-admin', (req, res) => {

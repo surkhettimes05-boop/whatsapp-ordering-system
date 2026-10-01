@@ -1124,6 +1124,28 @@ model CommerceOfferRedemption {
 	@@map("commerce_offer_redemptions")
 }
 
+
+model MediaFile {
+	id           String   @id @default(cuid())
+	fileName     String
+	originalName String
+	fileUrl      String
+	fileType     String
+	mimeType     String
+	fileSize     Int
+	entityType   String
+	entityId     String?
+	uploadedBy   String?
+	storageKey   String   @unique
+	createdAt    DateTime @default(now())
+	updatedAt    DateTime @updatedAt
+
+	@@index([entityType, entityId])
+	@@index([uploadedBy])
+	@@index([createdAt])
+	@@map("media_files")
+}
+
 model CommercePaymentTransaction {
 	id          String        @id @default(cuid())
 	orderId     String

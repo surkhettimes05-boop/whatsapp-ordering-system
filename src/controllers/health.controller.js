@@ -173,10 +173,26 @@ class HealthController {
         try {
             // Check critical services
             await prisma.$queryRaw`SELECT 1`;
+            if (!redisConnection || typeof redisConnection.ping !== 'function') {
+                throw new Error('Redis connection is not initialized');
+            }
+            await redisConnection.ping();
+
+            if (process.env.NODE_ENV === 'production') {
+                const uploadDir = process.env.UPLOAD_DIR;
+                if (!uploadDir) throw new Error('UPLOAD_DIR is not configured');
+                await fs.promises.mkdir(uploadDir, { recursive: true });
+                await fs.promises.access(uploadDir, fs.constants.R_OK | fs.constants.W_OK);
+            }
             
             res.json({
                 status: 'ready',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                services: {
+                    database: 'connected',
+                    redis: 'connected',
+                    storage: process.env.NODE_ENV === 'production' ? 'writable' : 'not_required'
+                }
             });
         } catch (error) {
             res.status(503).json({
