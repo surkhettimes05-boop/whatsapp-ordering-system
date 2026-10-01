@@ -47,7 +47,7 @@ async function run() {
 
   await controller.processEvent(event(phone, { text: String(productIndex + 1) + 'x2' }));
   let cart = await commerce.getCart(retailer.id);
-  assert(cart.items.some(i => i.product.sku === 'TEST-RICE-5KG' && i.quantity === 2), 'WhatsApp cart add failed');
+  assert(cart.items.some(i => i.sku === 'TEST-RICE-5KG' && i.quantity === 2), 'WhatsApp cart add failed');
 
   await controller.processEvent(event(phone, { text: 'coupon TEST10' }));
   const quoted = await shopping.quote(retailer.id);
