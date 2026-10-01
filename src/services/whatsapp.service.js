@@ -100,6 +100,15 @@ async function sendList(to, body, buttonText, sections, options = {}) {
   return sendMessage(to, text, { immediate: true });
 }
 
+async function sendCtaUrl(to, body, displayText, url, options = {}) {
+  if (usingMeta()) {
+    const result = await meta.sendCtaUrl(to, body, displayText, url, options);
+    await logOutgoing(to, body, null, result.messageId);
+    return result;
+  }
+  return sendMessage(to, `${body}\n\n${displayText}: ${url}`, { immediate: true });
+}
+
 async function sendProduct(to, productRetailerId, body) {
   if (!usingMeta()) throw new Error('Native product messages require WHATSAPP_PROVIDER=meta');
   const result = await meta.sendProduct(to, productRetailerId, body);
@@ -222,6 +231,7 @@ module.exports = {
   sendMessageImmediate: sendMessage,
   sendButtons,
   sendList,
+  sendCtaUrl,
   sendProduct,
   sendProductList,
   sendTemplate,
