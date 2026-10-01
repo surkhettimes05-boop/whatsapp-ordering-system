@@ -18,6 +18,28 @@ services:
         sync: false
       - key: PUBLIC_BASE_URL
         sync: false
+      - key: PUBLIC_SHOP_URL
+        sync: false
+      - key: WHATSAPP_PROVIDER
+        value: meta
+      - key: META_GRAPH_VERSION
+        value: v26.0
+      - key: META_WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: META_WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: META_WHATSAPP_APP_SECRET
+        sync: false
+      - key: META_CATALOG_ID
+        sync: false
+      - key: CATALOG_FEED_TOKEN
+        sync: false
+      - key: PAYMENT_PROVIDER
+        value: external
+      - key: PAYMENT_CHECKOUT_BASE_URL
+        sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
