@@ -16,6 +16,8 @@ services:
           property: connectionString
       - key: JWT_SECRET
         sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
@@ -35,26 +37,6 @@ services:
       - key: CORS_ORIGIN
         value: "*"
     healthCheckPath: /health
-
-  - type: web
-    name: whatsapp-ordering-frontend
-    runtime: static
-    plan: starter
-    rootDir: frontend
-    buildCommand: echo "skip build (using prebuilt dist)"
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: whatsapp-ordering-backend
-          property: host
-      - key: VITE_ENVIRONMENT
-        value: production
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
 
 databases:
   - name: whatsapp-postgres

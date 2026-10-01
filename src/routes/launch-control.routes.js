@@ -5,14 +5,14 @@
 
 const express = require('express');
 const launchControlController = require('../controllers/launch-control.controller');
-const authMiddleware = require('../middleware/auth.middleware');
-const adminMiddleware = require('../middleware/admin.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
+const { isAdmin } = require('../middleware/admin.middleware');
 
 const router = express.Router();
 
 // Apply authentication and admin middleware to all routes
-router.use(authMiddleware);
-router.use(adminMiddleware);
+router.use(authenticate);
+router.use(isAdmin);
 
 // Get all launch controls
 router.get('/controls', launchControlController.getControls);

@@ -41,3 +41,6 @@ jobs:
 
       - name: Load application in test mode
         run: node -e "const app=require('./src/app'); if (!app) process.exit(1); process.exit(0)"
+
+      - name: Verify commerce module surface
+        run: node -e "const c=require('./src/services/commerce.service'); const names=['listCatalog','getCart','addCartItem','checkoutCart','getSalesDashboard','getDailyReconciliation']; if(names.some(n=>typeof c[n]!=='function')) process.exit(1); process.exit(0)"

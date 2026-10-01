@@ -33,7 +33,7 @@ if (accountSid && authToken) {
  * @returns {Promise<object>} - Result with messageId or jobId
  */
 async function sendWhatsAppMessage(to, message, options = {}) {
-  const { useQueue = process.env.NODE_ENV === 'production', immediate = false } = options;
+  const { useQueue = process.env.NODE_ENV === 'production', immediate = false, mediaUrl = null } = options;
   
   // Format phone numbers for Twilio
   const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
@@ -42,7 +42,7 @@ async function sendWhatsAppMessage(to, message, options = {}) {
     : `whatsapp:${fromPhoneNumber}`;
 
   // Use queue service in production for reliability
-  if (useQueue && !immediate) {
+  if (useQueue && !immediate && !mediaUrl) {
     try {
       const result = await whatsappQueueService.sendMessage(to, message, { priority: 5 });
       logger.info(`WhatsApp message queued to ${to}`, { jobId: result.jobId });
@@ -50,12 +50,12 @@ async function sendWhatsAppMessage(to, message, options = {}) {
     } catch (error) {
       logger.error(`Failed to queue WhatsApp message to ${to}`, { error: error.message });
       // Fallback to immediate send
-      return await sendMessageImmediate(to, message);
+      return await sendMessageImmediate(to, message, options);
     }
   }
 
   // Send immediately (for critical messages or when queue is disabled)
-  return await sendMessageImmediate(to, message);
+  return await sendMessageImmediate(to, message, options);
 }
 
 /**
@@ -64,7 +64,7 @@ async function sendWhatsAppMessage(to, message, options = {}) {
  * @param {string} message - Message text
  * @returns {Promise<object>} - Result
  */
-async function sendMessageImmediate(to, message) {
+async function sendMessageImmediate(to, message, options = {}) {
   const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
   const formattedFrom = fromPhoneNumber.startsWith('whatsapp:') 
     ? fromPhoneNumber 
@@ -72,11 +72,15 @@ async function sendMessageImmediate(to, message) {
 
   if (client) {
     try {
-      const result = await client.messages.create({
+      const payload = {
         body: message,
         from: formattedFrom,
         to: formattedTo,
-      });
+      };
+      if (options.mediaUrl) {
+        payload.mediaUrl = Array.isArray(options.mediaUrl) ? options.mediaUrl : [options.mediaUrl];
+      }
+      const result = await client.messages.create(payload);
       
       logger.info(`WhatsApp message sent to ${to}`, { 
         messageId: result.sid,
@@ -91,6 +95,7 @@ async function sendMessageImmediate(to, message) {
             from: 'SYSTEM',
             to: to.replace('whatsapp:', ''),
             body: message,
+            mediaUrl: options.mediaUrl || null,
             direction: 'OUTGOING'
           }
         });
@@ -135,12 +140,13 @@ function getMainMenu() {
 
 📋 *Main Menu:*
 1️⃣ View Catalog
-2️⃣ Check Credit
+🛒 Type *cart* to review your cart
+✅ Type *checkout* to place your order
 3️⃣ Recent Orders
 4️⃣ Help
 
-*To order:* Send product number and quantity
-Example: *1 x 10* (Product 1, Quantity 10)
+*To add a product:* Send product number and quantity
+Example: *1 x 2*
 
 Type *menu* anytime to see this menu again.`;
 }
@@ -172,6 +178,18 @@ function formatProductList(products) {
 /**
  * Format order summary
  */
+function formatCartSummary(cart) {
+  if (!cart || !cart.items || cart.items.length === 0) return '🛒 Your cart is empty.';
+
+  let message = '🛒 *Your Cart*\n\n';
+  cart.items.forEach((item, index) => {
+    message += `${index + 1}. ${item.name} x ${item.quantity}\n`;
+    message += `   Rs. ${item.unitPrice} each = Rs. ${item.lineTotal}\n`;
+  });
+  message += `\n*Total: Rs. ${cart.totalAmount}*\nPayment: COD\n`;
+  return message;
+}
+
 function formatOrderSummary(order, items) {
   let message = '📋 *Order Summary*\n\n';
   message += `Order #${order.id.slice(-4)}\n\n`;
@@ -200,7 +218,7 @@ function formatRecentOrders(orders) {
 
   let message = '📦 *Your Recent Orders:*\n\n';
   orders.forEach((order) => {
-    message += `#${order.id.slice(-4)}\n`;
+    message += `#${order.orderNumber || order.id.slice(-4)}\n`;
     message += `Amount: Rs. ${order.totalAmount}\n`;
     message += `Status: ${order.status}\n`;
     if (order.createdAt) {
@@ -222,9 +240,10 @@ function getHelpMessage() {
 *Main Commands:*
 • *menu* - Show main menu
 • *1* or *view catalog* - Browse products
-• *2* or *check credit* - Check your credit status
-• *3* or *recent orders* - View recent orders
-• *place order* - Confirm your cart
+• *catalog* - Browse products
+• *cart* - Review your cart
+• *checkout* - Confirm delivery and place your order
+• *orders* - View recent orders
 
 *How to Order:*
 Send: *[Product Number] x [Quantity]*
@@ -255,6 +274,7 @@ module.exports = {
   sendMessageImmediate,
   getMainMenu,
   formatProductList,
+  formatCartSummary,
   formatOrderSummary,
   formatRecentOrders,
   getHelpMessage,
