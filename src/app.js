@@ -28,7 +28,7 @@ try {
 app.use(securityHeaders);
 app.use(cors());
 app.use(compress);
-app.use(express.json());
+app.use(express.json({\n  verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); }\n}));
 app.use(express.urlencoded({ extended: true }));
 app.use(httpLogger);
 
