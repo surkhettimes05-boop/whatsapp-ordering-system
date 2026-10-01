@@ -9,7 +9,7 @@ const router = express.Router();
 const { webhookRateLimiter } = require('../middleware/rateLimit.middleware');
 const { webhookIPAllowlist } = require('../middleware/ipAllowlist.middleware');
 const { verifyTwilioSignature } = require('../middleware/production.middleware');
-const whatsappController = require('../controllers/whatsapp.controller');
+const whatsappController = require('../controllers/commerce-whatsapp.controller');
 const logger = require('../utils/logger');
 
 /**
@@ -69,8 +69,8 @@ router.post('/webhook', webhookRateLimiter, verifyTwilioSignature, async (req, r
   // This prevents Twilio from retrying and timing out
   res.status(200).send('OK');
 
-  // Process message asynchronously (don't await)
-  whatsappController.handleIncomingMessage(req, res).catch(error => {
+  // Process message asynchronously after acknowledging Twilio.
+  whatsappController.handleIncomingMessage(req).catch(error => {
     logger.error('Error processing WhatsApp message', {
       error: error.message,
       stack: error.stack,

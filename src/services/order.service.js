@@ -109,6 +109,10 @@ class OrderService {
         updatedAt: new Date()
       };
 
+      if (status === 'CONFIRMED') updateData.confirmedAt = new Date();
+      if (status === 'DELIVERED') updateData.deliveredAt = new Date();
+      if (status === 'FAILED') updateData.failedAt = new Date();
+
       // STEP 5: Generate OTP if moving to OUT_FOR_DELIVERY
       let deliveryOTP = null;
       if (status === 'OUT_FOR_DELIVERY') {
@@ -250,10 +254,12 @@ This ensures your delivery is recorded correctly.`;
         // Create order in same transaction
         const order = await tx.order.create({
           data: {
+            orderNumber: `WA-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
             retailerId,
             totalAmount: total,
             paymentMode: 'COD',
-            status: 'PLACED'
+            sourceChannel: 'ADMIN',
+            status: 'CREATED'
           }
         });
 

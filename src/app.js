@@ -54,6 +54,11 @@ app.use((req, res, next) => {
 // Serve static files (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Built-in commerce dashboard
+app.get('/commerce-admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'commerce-dashboard.html'));
+});
+
 // Health check endpoints
 const healthController = require('./controllers/health.controller');
 app.get('/health', healthController.getHealth);
@@ -70,7 +75,7 @@ try {
   console.log('⏳ Loading Product, Category, Cart routes...');
   app.use('/api/v1/products', require('./routes/product.routes'));
   app.use('/api/v1/categories', require('./routes/category.routes'));
-  app.use('/api/v1/cart', require('./routes/cart.routes'));
+  app.use('/api/v1/commerce', require('./routes/commerce.routes'));
 
   console.log('⏳ Loading Address and Order routes...');
   app.use('/api/v1/addresses', require('./routes/address.routes'));

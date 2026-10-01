@@ -92,6 +92,18 @@ enum PaymentMode {
 	CASH
 }
 
+enum CartStatus {
+	ACTIVE
+	CHECKED_OUT
+	ABANDONED
+}
+
+enum OrderChannel {
+	WHATSAPP
+	ADMIN
+	API
+}
+
 enum StockReservationStatus {
 	ACTIVE
 	RELEASED
@@ -214,6 +226,7 @@ model Retailer {
 	payments           RetailerPayment[]
 	wholesalerCredits  RetailerWholesalerCredit[]
 	ratings            WholesalerRating[]
+	carts              Cart[]
   
 	@@index([phoneNumber])
 	@@index([whatsappNumber])
@@ -308,9 +321,13 @@ model Product {
 	id                 String              @id @default(cuid())
 	name               String
 	slug               String              @unique
+	sku                String?             @unique
+	brand              String?
 	categoryId         String
 	unit               String?
+	packSize           String?
 	fixedPrice         Decimal
+	mrp                Decimal?
 	description        String?
 	imageUrl           String?
 	isActive           Boolean             @default(true)
@@ -322,6 +339,7 @@ model Product {
 	orderItems         OrderItem[]
 	category           Category            @relation(fields: [categoryId], references: [id])
 	wholesalerProducts WholesalerProduct[]
+	cartItems           CartItem[]
   
 	@@index([categoryId])
 	@@index([slug])
@@ -366,7 +384,12 @@ model Order {
 	finalWholesalerId   String?            // ENFORCED: One winning wholesaler (via unique constraint)
 	totalAmount         Decimal
 	paymentMode         PaymentMode        @default(COD)
+	sourceChannel       OrderChannel       @default(WHATSAPP)
 	status              OrderStatus        @default(CREATED)
+	deliveryName        String?
+	deliveryPhone       String?
+	deliveryAddress     String?
+	customerNotes       String?
 	confirmedAt         DateTime?
 	deliveredAt         DateTime?
 	failedAt            DateTime?
@@ -417,6 +440,43 @@ model OrderItem {
 	@@index([productId])
 	@@map("order_items")
 }
+
+model Cart {
+	id             String     @id @default(cuid())
+	retailerId     String
+	activeKey      String?    @unique
+	status         CartStatus @default(ACTIVE)
+	currency       String     @default("NPR")
+	checkoutOrderId String?
+	checkedOutAt   DateTime?
+	createdAt      DateTime   @default(now())
+	updatedAt      DateTime   @updatedAt
+	retailer       Retailer   @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+	items          CartItem[]
+
+	@@index([retailerId])
+	@@index([status])
+	@@index([createdAt])
+	@@map("carts")
+}
+
+model CartItem {
+	id        String   @id @default(cuid())
+	cartId    String
+	productId String
+	quantity  Int
+	unitPrice Decimal
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+	product   Product  @relation(fields: [productId], references: [id])
+
+	@@unique([cartId, productId])
+	@@index([cartId])
+	@@index([productId])
+	@@map("cart_items")
+}
+
 
 model VendorOffer {
 	id              String      @id @default(uuid())
