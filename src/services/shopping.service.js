@@ -425,8 +425,15 @@ class ShoppingService {
     });
 
     let payment = null;
-    if (paymentProvider) payment = await paymentService.initiate(order.id, paymentProvider);
-    return { order, quote, payment };
+    let paymentError = null;
+    if (paymentProvider) {
+      try {
+        payment = await paymentService.initiate(order.id, paymentProvider);
+      } catch (error) {
+        paymentError = error.message;
+      }
+    }
+    return { order, quote, payment, paymentError };
   }
 }
 
