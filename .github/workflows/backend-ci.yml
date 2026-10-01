@@ -44,3 +44,7 @@ jobs:
 
       - name: Verify commerce module surface
         run: node -e "const c=require('./src/services/commerce.service'); const names=['listCatalog','getCart','addCartItem','checkoutCart','getSalesDashboard','getDailyReconciliation']; if(names.some(n=>typeof c[n]!=='function')) process.exit(1); process.exit(0)"
+
+
+      - name: Verify shopping/payment module surface
+        run: node -e "const s=require('./src/services/shopping.service'); const p=require('./src/services/payment.service'); const sNames=['quote','checkout','createOffer','setCartCoupon','resolveServiceArea','listAddresses']; const pNames=['initiate','verifyKhalti','verifyEsewaPayload','renderEsewaForm']; if(sNames.some(n=>typeof s[n]!=='function')||pNames.some(n=>typeof p[n]!=='function')) process.exit(1); process.exit(0)"
