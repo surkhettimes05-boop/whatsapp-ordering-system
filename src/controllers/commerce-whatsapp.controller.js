@@ -231,8 +231,7 @@ class CommerceWhatsAppController {
     }
     if (actionId.startsWith('category:')) {
       const categoryId = actionId.slice('category:'.length);
-      const result = await commerceService.listCatalog({ categoryId, limit: 30, page: 1 });
-      return this.sendProducts(phone, result.products, 'Category'), true;
+      return this.sendCategory(phone, categoryId), true;
     }
     return false;
   }
@@ -280,7 +279,8 @@ class CommerceWhatsAppController {
 
   async sendCategories(phone) {
     const categories = await commerceService.listCategories();
-    if (!categories.length) return whatsappService.sendMessage(phone, 'No categories are available yet.', { immediate: true });
+    const topLevel = categories.filter(category => !category.parentId);
+    if (!topLevel.length) return whatsappService.sendMessage(phone, 'No categories are available yet.', { immediate: true });
 
     if (whatsappService.usingMeta()) {
       try {
@@ -290,10 +290,12 @@ class CommerceWhatsAppController {
           'Categories',
           [{
             title: 'Shop by category',
-            rows: categories.slice(0, 10).map(category => ({
+            rows: topLevel.slice(0, 10).map(category => ({
               id: `category:${category.id}`,
               title: category.name,
-              description: category.description || 'Browse products'
+              description: category.children?.length
+                ? `${category.children.length} subcategories`
+                : (category.description || 'Browse products')
             }))
           }],
           { header: 'Categories' }
@@ -305,9 +307,44 @@ class CommerceWhatsAppController {
 
     return whatsappService.sendMessage(
       phone,
-      '📂 *Categories*\n\n' + categories.map((c, i) => `${i + 1}. ${c.name}`).join('\n'),
+      '📂 *Categories*\n\n' + topLevel.map((c, i) => `${i + 1}. ${c.name}`).join('\n'),
       { immediate: true }
     );
+  }
+
+  async sendCategory(phone, categoryId) {
+    const categories = await commerceService.listCategories();
+    const category = categories.find(item => item.id === categoryId);
+    if (!category) {
+      return whatsappService.sendMessage(phone, 'Category not found.', { immediate: true });
+    }
+
+    if (category.children?.length) {
+      if (whatsappService.usingMeta()) {
+        return whatsappService.sendList(
+          phone,
+          `Choose a ${category.name} subcategory.`,
+          'Subcategories',
+          [{
+            title: category.name,
+            rows: category.children.slice(0, 10).map(child => ({
+              id: `category:${child.id}`,
+              title: child.name,
+              description: child.description || 'Browse products'
+            }))
+          }],
+          { header: category.name }
+        );
+      }
+      return whatsappService.sendMessage(
+        phone,
+        `📂 *${category.name}*\n\n` + category.children.map((child, i) => `${i + 1}. ${child.name}`).join('\n'),
+        { immediate: true }
+      );
+    }
+
+    const result = await commerceService.listCatalog({ categoryId, limit: 30, page: 1 });
+    return this.sendProducts(phone, result.products, category.name);
   }
 
   async sendOffers(phone) {
