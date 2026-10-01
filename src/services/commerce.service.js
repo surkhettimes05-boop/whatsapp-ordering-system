@@ -633,6 +633,48 @@ class CommerceService {
     return updated;
   }
 
+  async getMetaCatalogFeedRows() {
+    const result = await this.listCatalog({ limit: 50, page: 1 });
+    return result.products
+      .filter(product => product.metaRetailerId && product.imageUrl)
+      .map(product => ({
+        id: product.metaRetailerId,
+        title: product.name,
+        description: product.description || [product.brand, product.packSize].filter(Boolean).join(' '),
+        availability: product.stockStatus === 'OUT' ? 'out of stock' : 'in stock',
+        condition: 'new',
+        price: `${Number(product.price).toFixed(2)} NPR`,
+        link: `${String(process.env.PUBLIC_SHOP_URL || process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/product/${encodeURIComponent(product.slug)}`,
+        image_link: product.imageUrl,
+        brand: product.brand || 'Generic'
+      }));
+  }
+
+  async listSupportTickets(filters = {}) {
+    const where = {};
+    if (filters.status) where.status = filters.status;
+    if (filters.retailerId) where.retailerId = filters.retailerId;
+    return prisma.commerceSupportTicket.findMany({
+      where,
+      include: { retailer: true, order: true },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(100, Math.max(1, Number(filters.limit || 50)))
+    });
+  }
+
+  async updateSupportTicket(id, data = {}) {
+    const update = {};
+    if (data.status) update.status = data.status;
+    if (data.priority) update.priority = data.priority;
+    if (data.resolution !== undefined) update.resolution = data.resolution;
+    if (data.status === 'RESOLVED' || data.status === 'CLOSED') update.resolvedAt = new Date();
+    return prisma.commerceSupportTicket.update({
+      where: { id },
+      data: update,
+      include: { retailer: true, order: true }
+    });
+  }
+
   async getSalesDashboard(filters = {}) {
     const { start, end } = rangeStart(filters.range || 'today');
     const createdAt = {};
