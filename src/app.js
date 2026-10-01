@@ -91,7 +91,6 @@ try {
   app.use('/api/v1/bidding', require('./routes/bidding.routes'));
   app.use('/api/v1/reports', require('./routes/reporting.routes'));
   app.use('/api/v1/launch-control', require('./routes/launch-control.routes'));
-  app.use('/metrics', require('./routes/metrics.routes'));
 
   console.log('✅ All API routes loaded successfully');
 } catch (e) {
