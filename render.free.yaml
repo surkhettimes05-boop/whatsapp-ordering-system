@@ -1,0 +1,70 @@
+services:
+  - type: web
+    name: whatsapp-ordering-free-test
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npx prisma generate && npm prune --omit=dev
+    startCommand: npx prisma migrate deploy && node scripts/seed-free-test.js && node src/app.js
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: whatsapp-postgres-free-test
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: whatsapp-keyvalue-free-test
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REQUIRE_LIVE_PAYMENTS
+        value: "false"
+      - key: WHATSAPP_PROVIDER
+        value: meta
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: MAX_UPLOAD_BYTES
+        value: "5242880"
+      - key: LOG_LEVEL
+        value: info
+      - key: TEST_ADMIN_PHONE
+        sync: false
+      - key: TEST_ADMIN_PASSWORD
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: PUBLIC_SHOP_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: META_GRAPH_VERSION
+        sync: false
+      - key: META_WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: META_WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: META_WHATSAPP_APP_SECRET
+        sync: false
+      - key: META_CATALOG_ID
+        sync: false
+      - key: CATALOG_FEED_TOKEN
+        generateValue: true
+    healthCheckPath: /health
+
+  - type: keyvalue
+    name: whatsapp-keyvalue-free-test
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+databases:
+  - name: whatsapp-postgres-free-test
+    databaseName: whatsapp_ordering_test
+    user: whatsapp_test_user
+    plan: free
