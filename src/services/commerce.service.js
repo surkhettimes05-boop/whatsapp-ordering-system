@@ -429,6 +429,41 @@ class CommerceService {
     };
   }
 
+  async updateCommerceOrderStatus(orderId, nextStatus) {
+    const transitions = {
+      CREATED: ['CONFIRMED', 'CANCELLED'],
+      CONFIRMED: ['PROCESSING', 'CANCELLED'],
+      PROCESSING: ['PACKED', 'CANCELLED'],
+      PACKED: ['OUT_FOR_DELIVERY', 'CANCELLED'],
+      OUT_FOR_DELIVERY: ['DELIVERED', 'FAILED', 'CANCELLED'],
+      FAILED: ['PROCESSING', 'CANCELLED'],
+      DELIVERED: [],
+      CANCELLED: []
+    };
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { retailer: true, items: { include: { product: true } } }
+    });
+    if (!order) throw new Error('Order not found');
+
+    const allowed = transitions[order.status] || [];
+    if (!allowed.includes(nextStatus)) {
+      throw new Error(`Invalid commerce transition: ${order.status} → ${nextStatus}`);
+    }
+
+    const data = { status: nextStatus };
+    if (nextStatus === 'CONFIRMED') data.confirmedAt = new Date();
+    if (nextStatus === 'DELIVERED') data.deliveredAt = new Date();
+    if (nextStatus === 'FAILED') data.failedAt = new Date();
+
+    return prisma.order.update({
+      where: { id: orderId },
+      data,
+      include: { retailer: true, items: { include: { product: true } } }
+    });
+  }
+
   async getDailyReconciliation(date) {
     const { start, end } = rangeStart(null, date);
     const orders = await prisma.order.findMany({
