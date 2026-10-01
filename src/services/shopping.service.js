@@ -287,7 +287,9 @@ class ShoppingService {
       });
     }
 
-    const service = await this.resolveServiceArea(options.serviceAreaCode, address);
+    const service = (address || options.serviceAreaCode)
+      ? await this.resolveServiceArea(options.serviceAreaCode, address)
+      : { configured: false, serviceable: true, area: null };
     if (service.configured && !service.serviceable) throw new Error('Delivery is not available to this address');
 
     const subtotal = cart.items.reduce((sum, item) => sum + n(item.product.fixedPrice) * item.quantity, 0);
