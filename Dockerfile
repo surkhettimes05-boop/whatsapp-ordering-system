@@ -4,8 +4,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm ci
+RUN npm ci --include=dev
 RUN npx prisma generate
+RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
 WORKDIR /app
