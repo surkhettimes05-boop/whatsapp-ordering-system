@@ -117,6 +117,73 @@ class CommerceController {
     }
   }
 
+  async metaCatalogFeed(req, res) {
+    try {
+      const expected = process.env.CATALOG_FEED_TOKEN;
+      if (expected && req.query.token !== expected) {
+        return res.status(401).send('Unauthorized');
+      }
+      const rows = await commerceService.getMetaCatalogFeedRows();
+      const headers = ['id','title','description','availability','condition','price','link','image_link','brand'];
+      const esc = value => {
+        const text = String(value ?? '');
+        return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+      };
+      const csv = [headers.join(','), ...rows.map(row => headers.map(h => esc(row[h])).join(','))].join('\n');
+      res.type('text/csv').send(csv);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async getAddresses(req, res) {
+    try {
+      res.json({ success: true, data: await commerceService.getAddresses(req.params.retailerId) });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  async saveAddress(req, res) {
+    try {
+      res.status(201).json({ success: true, data: await commerceService.saveAddress(req.params.retailerId, req.body) });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  async listServiceAreas(req, res) {
+    try {
+      res.json({ success: true, data: await commerceService.listServiceAreas() });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async upsertServiceArea(req, res) {
+    try {
+      res.json({ success: true, data: await commerceService.upsertServiceArea(req.body) });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  async listSupportTickets(req, res) {
+    try {
+      res.json({ success: true, data: await commerceService.listSupportTickets(req.query) });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async updateSupportTicket(req, res) {
+    try {
+      res.json({ success: true, data: await commerceService.updateSupportTicket(req.params.id, req.body) });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
   async sales(req, res) {
     try {
       res.json({ success: true, data: await commerceService.getSalesDashboard(req.query) });
