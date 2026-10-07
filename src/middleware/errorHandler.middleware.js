@@ -9,7 +9,7 @@
  * - Detailed server-side logging
  */
 
-const logger = require('../config/logger');
+const { logger } = require('../config/logger');
 
 /**
  * Custom error class for application-specific errors
@@ -77,7 +77,7 @@ const errorHandler = (err, req, res, next) => {
   // Send response (no sensitive data)
   res.status(err.statusCode).json({
     success: false,
-    error: err.message,
+    error: err.statusCode >= 500 ? 'Internal server error' : err.message,
     statusCode: err.statusCode,
     timestamp: err.timestamp || new Date().toISOString(),
     // Only include request ID for tracing (no sensitive data)

@@ -24,48 +24,12 @@ function safeJson(value) {
 }
 
 class PaymentService {
-  isConfigured(provider) {
-    const p = normalizeProvider(provider);
-    if (p === 'khalti') return Boolean(process.env.KHALTI_SECRET_KEY && process.env.PUBLIC_BASE_URL);
-    return Boolean(
-      process.env.ESEWA_SECRET_KEY &&
-      process.env.ESEWA_PRODUCT_CODE &&
-      process.env.PUBLIC_BASE_URL
-    );
-  }
+  isConfigured() { return false; }
 
-  configuredProviders() {
-    return ['khalti', 'esewa'].filter(provider => {
-      try { return this.isConfigured(provider); } catch { return false; }
-    });
-  }
+  configuredProviders() { return []; }
 
   async initiate(orderId, provider) {
-    const p = normalizeProvider(provider);
-    if (!this.isConfigured(p)) {
-      throw new Error(`${p.toUpperCase()} payment is not configured`);
-    }
-
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: { retailer: true }
-    });
-    if (!order) throw new Error('Order not found');
-    if (Number(order.totalAmount) <= 0) throw new Error('Order amount must be greater than zero');
-
-    const existing = await prisma.commercePaymentTransaction.findFirst({
-      where: {
-        orderId,
-        provider: p,
-        status: { in: ['PENDING', 'PAID'] }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    if (existing?.status === 'PAID') return existing;
-    if (existing?.checkoutUrl && existing.status === 'PENDING') return existing;
-
-    if (p === 'khalti') return this.initiateKhalti(order);
-    return this.initiateEsewa(order);
+    throw new Error('Only cash on delivery is enabled');
   }
 
   khaltiBase() {

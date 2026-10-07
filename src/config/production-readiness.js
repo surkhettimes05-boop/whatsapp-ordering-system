@@ -22,7 +22,9 @@ function assertProductionConfiguration(env = process.env) {
     'META_WHATSAPP_APP_SECRET',
     'META_CATALOG_ID',
     'CATALOG_FEED_TOKEN',
-    'UPLOAD_DIR'
+    'UPLOAD_DIR',
+    'COMMERCE_WHOLESALER_ID',
+    'WHATSAPP_STATUS_TEMPLATE'
   ];
 
   for (const key of required) {
@@ -55,22 +57,14 @@ function assertProductionConfiguration(env = process.env) {
 
   const uploadDir = String(env.UPLOAD_DIR || '');
   if (!path.isAbsolute(uploadDir)) errors.push('UPLOAD_DIR must be an absolute persistent-disk path');
-  if (uploadDir && !uploadDir.startsWith('/var/data/') && !uploadDir.startsWith('/opt/render/project/src/')) {
+  if (uploadDir && !uploadDir.startsWith('/var/data/')) {
     errors.push('UPLOAD_DIR must point to the configured persistent storage mount');
   }
 
-  const requireLivePayments = String(env.REQUIRE_LIVE_PAYMENTS || 'true').toLowerCase() !== 'false';
-  if (requireLivePayments) {
-    if (String(env.KHALTI_ENV || '').toLowerCase() !== 'production') {
-      errors.push('KHALTI_ENV must be production');
-    }
-    if (!String(env.KHALTI_SECRET_KEY || '').trim()) errors.push('KHALTI_SECRET_KEY is required');
-    if (String(env.ESEWA_ENV || '').toLowerCase() !== 'production') {
-      errors.push('ESEWA_ENV must be production');
-    }
-    if (!String(env.ESEWA_PRODUCT_CODE || '').trim()) errors.push('ESEWA_PRODUCT_CODE is required');
-    if (!String(env.ESEWA_SECRET_KEY || '').trim()) errors.push('ESEWA_SECRET_KEY is required');
-  }
+  const requireLivePayments = false;
+  if (env.REQUIRE_LIVE_PAYMENTS === 'true') errors.push('Live payments must remain disabled for the COD pilot');
+  if (env.ENABLE_LEGACY_ROUTES === 'true') errors.push('Legacy wholesale/credit routes must remain disabled');
+  if (env.ENABLE_PROMOTIONS === 'true') errors.push('Promotions must remain disabled for the COD pilot');
 
   if (errors.length) {
     const error = new Error('Production configuration is not launch-ready:\n- ' + errors.join('\n- '));

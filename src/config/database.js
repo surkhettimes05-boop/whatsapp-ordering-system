@@ -355,5 +355,18 @@ if (process.env.NODE_ENV === 'test' && process.env.USE_REAL_DATABASE !== 'true')
     await prisma.$disconnect();
   });
 
-  module.exports = prisma;
+  const context = require('./commerce-context');
+  module.exports = new Proxy(prisma, { get(target, key) {
+    const tx = context.getStore()?.tx;
+    if (tx && key === '$transaction') return async operation => {
+      if (typeof operation !== 'function') throw new Error('Nested transactions require callback form');
+      const name = 'nested_' + require('node:crypto').randomBytes(6).toString('hex');
+      await tx.$executeRawUnsafe('SAVEPOINT ' + name);
+      try { const result = await operation(tx); await tx.$executeRawUnsafe('RELEASE SAVEPOINT ' + name); return result; }
+      catch (error) { await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT ' + name); await tx.$executeRawUnsafe('RELEASE SAVEPOINT ' + name); throw error; }
+    };
+    const client = tx || target;
+    const value = client[key];
+    return typeof value === 'function' ? value.bind(client) : value;
+  }});
 }

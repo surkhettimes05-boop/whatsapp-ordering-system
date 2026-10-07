@@ -68,7 +68,9 @@ class ShoppingController {
 
   async checkout(req, res) {
     try {
+      if (!req.body.cartId) return res.status(400).json({ error: 'cartId is required for retry-safe checkout' });
       const data = await shoppingService.checkout(req.params.retailerId, {
+        cartId: req.body.cartId,
         addressId: req.body.addressId,
         serviceAreaCode: req.body.serviceAreaCode,
         couponCode: req.body.couponCode,
@@ -85,7 +87,7 @@ class ShoppingController {
       success: true,
       data: {
         cod: true,
-        online: paymentService.configuredProviders()
+        online: []
       }
     });
   }

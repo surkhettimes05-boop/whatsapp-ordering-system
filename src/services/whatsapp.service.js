@@ -8,6 +8,14 @@ const twilio = require('twilio');
 const whatsappQueueService = require('./whatsappQueue.service');
 const meta = require('./metaWhatsApp.service');
 
+const context = require('../config/commerce-context');
+async function defer(method, args) {
+  const tx = context.getStore()?.tx;
+  if (!tx) return null;
+  await tx.whatsAppOutbox.create({ data: { payload: JSON.stringify({ method, args }), sender: String(args[0]) } });
+  return { success: true, queued: true };
+}
+
 const provider = String(process.env.WHATSAPP_PROVIDER || 'twilio').toLowerCase();
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -60,6 +68,8 @@ async function sendTwilioImmediate(to, message, options = {}) {
 }
 
 async function sendMessage(to, message, options = {}) {
+  const deferred = await defer('sendMessage', [to, message, options]);
+  if (deferred) return deferred;
   if (usingMeta()) {
     const result = options.mediaUrl
       ? await meta.sendImage(to, Array.isArray(options.mediaUrl) ? options.mediaUrl[0] : options.mediaUrl, message)
@@ -80,6 +90,8 @@ async function sendMessage(to, message, options = {}) {
 }
 
 async function sendButtons(to, body, buttons, options = {}) {
+  const deferred = await defer('sendButtons', [to, body, buttons, options]);
+  if (deferred) return deferred;
   if (usingMeta()) {
     const result = await meta.sendButtons(to, body, buttons, options);
     await logOutgoing(to, body, null, result.messageId);
@@ -90,6 +102,8 @@ async function sendButtons(to, body, buttons, options = {}) {
 }
 
 async function sendList(to, body, buttonText, sections, options = {}) {
+  const deferred = await defer('sendList', [to, body, buttonText, sections, options]);
+  if (deferred) return deferred;
   if (usingMeta()) {
     const result = await meta.sendList(to, body, buttonText, sections, options);
     await logOutgoing(to, body, null, result.messageId);
@@ -101,6 +115,8 @@ async function sendList(to, body, buttonText, sections, options = {}) {
 }
 
 async function sendCtaUrl(to, body, displayText, url, options = {}) {
+  const deferred = await defer('sendCtaUrl', [to, body, displayText, url, options]);
+  if (deferred) return deferred;
   if (usingMeta()) {
     const result = await meta.sendCtaUrl(to, body, displayText, url, options);
     await logOutgoing(to, body, null, result.messageId);
@@ -110,6 +126,8 @@ async function sendCtaUrl(to, body, displayText, url, options = {}) {
 }
 
 async function sendProduct(to, productRetailerId, body) {
+  const deferred = await defer('sendProduct', [to, productRetailerId, body]);
+  if (deferred) return deferred;
   if (!usingMeta()) throw new Error('Native product messages require WHATSAPP_PROVIDER=meta');
   const result = await meta.sendProduct(to, productRetailerId, body);
   await logOutgoing(to, body || 'Product', null, result.messageId);
@@ -117,6 +135,8 @@ async function sendProduct(to, productRetailerId, body) {
 }
 
 async function sendProductList(to, sections, options = {}) {
+  const deferred = await defer('sendProductList', [to, sections, options]);
+  if (deferred) return deferred;
   if (!usingMeta()) throw new Error('Native product lists require WHATSAPP_PROVIDER=meta');
   const result = await meta.sendProductList(to, sections, options);
   await logOutgoing(to, options.body || 'Product catalog', null, result.messageId);
@@ -124,6 +144,8 @@ async function sendProductList(to, sections, options = {}) {
 }
 
 async function sendTemplate(to, templateName, languageCode, components) {
+  const deferred = await defer('sendTemplate', [to, templateName, languageCode, components]);
+  if (deferred) return deferred;
   if (!usingMeta()) throw new Error('Template messages require WHATSAPP_PROVIDER=meta');
   const result = await meta.sendTemplate(to, templateName, languageCode, components);
   await logOutgoing(to, `Template: ${templateName}`, null, result.messageId);

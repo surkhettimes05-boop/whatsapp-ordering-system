@@ -1,12 +1,11 @@
 services:
-  # Backend API Service
   - type: web
     name: whatsapp-ordering-backend
     runtime: node
-    plan: starter
-    rootDir: backend
-    buildCommand: npm ci && npx prisma generate
-    startCommand: npm start
+    plan: 0.5c-512mb
+    buildCommand: npm ci --include=dev && npx prisma generate && npm prune --omit=dev
+    preDeployCommand: npx prisma migrate deploy
+    startCommand: node scripts/bootstrap-production.js && node src/app.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,47 +15,77 @@ services:
         fromDatabase:
           name: whatsapp-postgres
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: whatsapp-keyvalue
+          property: connectionString
       - key: JWT_SECRET
-        value: whatsapp_ordering_super_secure_jwt_secret_key_production_2026_render_deployment
-      - key: TWILIO_ACCOUNT_SID
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: PUBLIC_BASE_URL
         sync: false
-      - key: TWILIO_WHATSAPP_FROM
+      - key: PUBLIC_SHOP_URL
         sync: false
-      - key: FORCE_TWILIO_VERIFY
-        value: false
+      - key: WHATSAPP_PROVIDER
+        value: meta
+      - key: META_GRAPH_VERSION
+        sync: false
+      - key: META_WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: META_WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: META_WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: META_WHATSAPP_APP_SECRET
+        sync: false
+      - key: META_CATALOG_ID
+        sync: false
+      - key: CATALOG_FEED_TOKEN
+        sync: false
+      - key: WHATSAPP_STATUS_TEMPLATE
+        sync: false
+      - key: WHATSAPP_TEMPLATE_LANGUAGE
+        value: en
+      - key: COMMERCE_WHOLESALER_ID
+        value: pasalho-fulfillment
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ENABLE_LEGACY_ROUTES
+        value: "false"
+      - key: ENABLE_PROMOTIONS
+        value: "false"
+      - key: TRUST_PROXY_HOPS
+        value: "1"
       - key: LOG_LEVEL
         value: info
-      - key: ENABLE_BIDDING
+      - key: ENABLE_LAUNCH_CONTROL
         value: true
-      - key: ENABLE_CREDIT_SYSTEM
-        value: true
-    healthCheckPath: /health
+      - key: CORS_ORIGIN
+        sync: false
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: MAX_UPLOAD_BYTES
+        value: "10485760"
+      - key: REQUIRE_LIVE_PAYMENTS
+        value: "false"
+    healthCheckPath: /health/ready
+    disk:
+      name: media
+      mountPath: /var/data
+      sizeGB: 10
 
-  # Frontend Admin Dashboard
-  - type: web
-    name: whatsapp-ordering-frontend
-    runtime: static
-    plan: starter
-    rootDir: frontend
-    buildCommand: echo "skip build (using prebuilt dist)"
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: whatsapp-ordering-backend
-          property: host
-      - key: VITE_ENVIRONMENT
-        value: production
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+  - type: keyvalue
+    name: whatsapp-keyvalue
+    plan: 256mb
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
 
 databases:
   - name: whatsapp-postgres
     databaseName: whatsapp_ordering
     user: whatsapp_user
-    plan: starter
+    plan: 0.1c-256mb
+    ipAllowList: []

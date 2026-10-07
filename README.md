@@ -1,3 +1,17 @@
+# Pasalho WhatsApp Ordering — Nepal COD Pilot
+
+Start with [PRODUCTION_LAUNCH.md](PRODUCTION_LAUNCH.md). The app is in the **repository root**. Deploy `render.yaml` for production; `render.free.yaml` is a disposable test environment only.
+
+Customers order in WhatsApp through the signed Meta webhook. Administrators use `/commerce-admin`. Public REST account registration, electronic payments and legacy wholesale/credit routes are disabled for this pilot.
+
+Checkout reserves the configured fulfillment location's inventory. Cancellation releases it. Delivery requires confirmation of the exact COD cash received and records one cash receipt plus one stock deduction. Inbound webhook processing and outbound replies are persisted in PostgreSQL for retries after restart.
+
+Validation: `npm run test:customer` with `NODE_ENV=test USE_REAL_DATABASE=true` and a disposable migrated PostgreSQL database. Never run test fixtures on a customer database.
+
+The older documents below are historical; use the launch runbook for the active deployment contract.
+
+---
+
 # WhatsApp Ordering System - Backend
 
 A comprehensive backend system for WhatsApp-based ordering for Retailers and Wholesalers.

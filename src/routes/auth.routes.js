@@ -11,7 +11,7 @@ const {
 } = require('../validators/auth.validator');
 
 // Public routes (with strict rate limiting)
-router.post('/register', authRateLimiter, registerValidation, authController.register);
+router.post('/register', authRateLimiter, (req, res) => res.status(403).json({ error: 'Public account registration is disabled. Customers order through verified WhatsApp messages.' }));
 router.post('/login', authRateLimiter, loginValidation, authController.login);
 
 // Protected routes

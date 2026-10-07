@@ -4,6 +4,9 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../src/config/database');
 
 async function seedFreeTest() {
+  if (process.env.NODE_ENV === 'production') throw new Error('Demo seed is forbidden in production');
+  process.env.COMMERCE_WHOLESALER_ID ||= 'free-test-fulfillment';
+  const location = await prisma.wholesaler.upsert({ where: { id: process.env.COMMERCE_WHOLESALER_ID }, update: {}, create: { id: process.env.COMMERCE_WHOLESALER_ID, businessName: 'Test fulfillment', ownerName: 'Test', phoneNumber: 'test-internal-' + process.env.COMMERCE_WHOLESALER_ID, whatsappNumber: 'test-internal-' + process.env.COMMERCE_WHOLESALER_ID, businessAddress: 'Birendranagar', city: 'Birendranagar', state: 'Karnali', pincode: '21700', latitude: 28.6, longitude: 81.6, categories: '[]' } });
   const groceries = await prisma.category.upsert({
     where: { slug: 'test-groceries' },
     update: { name: 'Test Groceries', isActive: true, sortOrder: 1 },
@@ -71,11 +74,12 @@ async function seedFreeTest() {
   ];
 
   for (const product of products) {
-    await prisma.product.upsert({
+    const saved = await prisma.product.upsert({
       where: { sku: product.sku },
       update: { ...product, isActive: true, deletedAt: null },
       create: { ...product, isActive: true }
     });
+    await prisma.wholesalerProduct.upsert({ where: { wholesalerId_productId: { wholesalerId: location.id, productId: saved.id } }, update: {}, create: { wholesalerId: location.id, productId: saved.id, priceOffered: saved.fixedPrice, stock: 1000 } });
   }
 
   await prisma.serviceArea.upsert({

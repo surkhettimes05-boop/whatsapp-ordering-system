@@ -6,7 +6,7 @@ const registerValidation = [
     .trim()
     .notEmpty()
     .withMessage('Phone number is required')
-    .matches(/^\+?[1-9]\d{9,14}$/)
+    .matches(/^\+?9779[78]\d{8}$/)
     .withMessage('Please provide a valid phone number with country code'),
   
   body('name')
@@ -39,7 +39,7 @@ const registerValidation = [
   
   body('role')
     .optional()
-    .isIn(['RETAILER', 'WHOLESALER'])
+    .isIn(['RETAILER'])
     .withMessage('Role must be either RETAILER or WHOLESALER')
 ];
 

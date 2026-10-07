@@ -85,10 +85,12 @@ class CommerceController {
 
   async checkout(req, res) {
     try {
+      if (!req.body.cartId) return res.status(400).json({ error: 'cartId is required for retry-safe checkout' });
       const data = await commerceService.checkoutCart({
         retailerId: req.params.retailerId,
         paymentMode: req.body.paymentMode,
         sourceChannel: req.body.sourceChannel || 'ADMIN',
+        cartId: req.body.cartId, addressId: req.body.addressId,
         deliveryName: req.body.deliveryName,
         deliveryPhone: req.body.deliveryPhone,
         deliveryAddress: req.body.deliveryAddress,
@@ -102,15 +104,7 @@ class CommerceController {
 
   async updateOrderStatus(req, res) {
     try {
-      const order = await commerceService.updateCommerceOrderStatus(req.params.id, req.body.status);
-      const whatsappService = require('../services/whatsapp.service');
-      if (order.retailer?.whatsappNumber) {
-        whatsappService.sendMessage(
-          order.retailer.whatsappNumber,
-          `📦 Order *${order.orderNumber}* status: *${order.status.replaceAll('_', ' ')}*`,
-          { immediate: true }
-        ).catch(() => {});
-      }
+      const order = await commerceService.updateCommerceOrderStatus(req.params.id, req.body.status, { cashReceived: req.body.cashReceived, actorId: req.user.id });
       res.json({ success: true, data: order });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });

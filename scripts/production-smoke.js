@@ -27,14 +27,13 @@ async function json(path, options) {
   const data = providers.data || providers;
   const online = data.online || [];
   if (!data.cod) throw new Error('COD is not enabled');
-  if (String(process.env.REQUIRE_LIVE_PAYMENTS || 'true').toLowerCase() !== 'false') {
-    for (const provider of ['khalti', 'esewa']) {
-      if (!online.includes(provider)) throw new Error(`${provider} is not configured`);
-    }
-  }
+  if (online.length) throw new Error('Online payments must remain disabled');
 
   await json('/api/v1/commerce/categories');
-  await json('/api/v1/commerce/catalog?limit=1');
+  const catalog = await json('/api/v1/commerce/catalog?limit=50');
+  if (!catalog.data?.products?.some(product => product.availableUnits > 0)) throw new Error('No stocked products are available');
+  const zone = await json('/api/v1/shopping/serviceability?query=' + encodeURIComponent(process.env.SMOKE_SERVICE_AREA || 'Birendranagar'));
+  if (!zone.data?.serviceable) throw new Error('Pilot delivery area is not serviceable');
 
   console.log(JSON.stringify({
     ok: true,
