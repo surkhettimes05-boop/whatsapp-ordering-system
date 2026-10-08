@@ -14,26 +14,8 @@ function cleanPhone(value) {
 
 class CommerceWhatsAppController {
   async handleIncomingEvent(event) {
-    if (!event) return;
-    if (event.kind === 'status') return;
-
-    const reserved = await webhookService.reserveInboundEvent(event);
-    if (reserved.duplicate) {
-      logger.info('Ignoring duplicate WhatsApp webhook', { messageId: event.providerMessageId });
-      return;
-    }
-
-    try {
-      await this.processEvent(event);
-      await webhookService.markProcessed(reserved.event?.id);
-    } catch (error) {
-      logger.error('WhatsApp commerce event failed', {
-        error: error.message,
-        stack: error.stack,
-        providerMessageId: event.providerMessageId
-      });
-      throw error;
-    }
+    await webhookService.persistEvents([event]);
+    await webhookService.processPending(this);
   }
 
   async processEvent(event) {
@@ -42,9 +24,10 @@ class CommerceWhatsAppController {
     const lowerText = text.toLowerCase();
     const actionId = event.actionId || null;
 
-    if (!phone) return;
+    if (!/^9779[78]\d{8}$/.test(phone)) return;
+    if (event.nativeOrder && event.nativeOrder.catalogId !== process.env.META_CATALOG_ID) throw new Error('Invalid catalog');
 
-    prisma.whatsAppMessage.create({
+    await prisma.whatsAppMessage.create({
       data: {
         from: phone,
         to: 'SYSTEM',
@@ -54,9 +37,9 @@ class CommerceWhatsAppController {
       }
     }).catch(error => logger.warn('Failed to log inbound WhatsApp message', { error: error.message }));
 
-    const wholesaler = await prisma.wholesaler.findFirst({
+    const wholesaler = process.env.ENABLE_LEGACY_ROUTES === 'true' ? await prisma.wholesaler.findFirst({
       where: { OR: [{ whatsappNumber: phone }, { phoneNumber: phone }] }
-    });
+    }) : null;
     if (wholesaler) {
       return legacyController.handleWholesalerMessage(wholesaler, lowerText, phone);
     }
@@ -75,11 +58,9 @@ class CommerceWhatsAppController {
           status: 'ACTIVE'
         }
       });
-      await this.sendMainMenu(phone);
-      return;
     }
 
-    if (retailer.status === 'SUSPENDED' || retailer.status === 'DELETED' || retailer.creditStatus === 'BLOCKED') {
+    if (retailer.status !== 'ACTIVE' || retailer.deletedAt || retailer.creditStatus === 'BLOCKED') {
       await whatsappService.sendMessage(phone, '❌ Your account is not active. Please contact support.', { immediate: true });
       return;
     }
@@ -459,6 +440,7 @@ class CommerceWhatsAppController {
   }
 
   async sendProducts(phone, products, title) {
+    await prisma.retailer.updateMany({ where: { whatsappNumber: phone }, data: { catalogProductIds: JSON.stringify(products.map(p => p.id)) } });
     if (!products.length) return whatsappService.sendMessage(phone, 'No products found.', { immediate: true });
 
     const nativeProducts = products.filter(product => product.metaRetailerId);
@@ -506,11 +488,11 @@ class CommerceWhatsAppController {
   }
 
   async addCatalogItem(retailer, phone, index, quantity) {
-    const catalog = await commerceService.listCatalog({ limit: 30, page: 1 });
-    if (index < 1 || index > catalog.products.length) {
-      return whatsappService.sendMessage(phone, '❌ Invalid product number. Type *catalog* to refresh.', { immediate: true });
-    }
-    const product = catalog.products[index - 1];
+    const current = await prisma.retailer.findUnique({ where: { id: retailer.id } });
+    const ids = JSON.parse(current.catalogProductIds || '[]');
+    if (index < 1 || index > ids.length) return whatsappService.sendMessage(phone, 'Invalid product number. Type *catalog* to refresh.', { immediate: true });
+    const product = await prisma.product.findUnique({ where: { id: ids[index - 1] } });
+    if (!product) throw new Error('Product unavailable');
     const cart = await commerceService.addCartItem(retailer.id, product.id, quantity);
     await whatsappService.sendButtons(
       phone,
@@ -617,7 +599,7 @@ class CommerceWhatsAppController {
     const addresses = await shoppingService.listAddresses(retailer.id);
     const address = addresses.find(item => item.isDefault) || addresses[0];
     const quote = await shoppingService.quote(retailer.id, { addressId: address?.id });
-    const providers = paymentService.configuredProviders();
+    const providers = [];
     const buttons = [{ id: 'checkout_cod', title: 'Cash on delivery' }];
     if (providers.includes('khalti')) buttons.push({ id: 'checkout_khalti', title: 'Khalti' });
     if (providers.includes('esewa')) buttons.push({ id: 'checkout_esewa', title: 'eSewa' });
@@ -626,7 +608,7 @@ class CommerceWhatsAppController {
       phone,
       `💳 *Choose payment*\nPayable: Rs. ${quote.totalAmount}${quote.totalSavings ? `\nYou save: Rs. ${quote.totalSavings}` : ''}`,
       buttons,
-      { footer: providers.length ? 'Online payments are verified server-to-server.' : 'Online payment credentials are not configured yet.' }
+      { footer: 'Pay cash when your order arrives.' }
     );
   }
 
@@ -638,6 +620,7 @@ class CommerceWhatsAppController {
     try {
       const result = await shoppingService.checkout(retailer.id, {
         addressId: address.id,
+        cartId: (await commerceService.getCart(retailer.id)).id,
         paymentProvider: provider,
         sourceChannel: 'WHATSAPP'
       });

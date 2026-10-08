@@ -173,6 +173,12 @@ class HealthController {
         try {
             // Check critical services
             await prisma.$queryRaw`SELECT 1`;
+            await prisma.whatsAppInboundEvent.count();
+            await prisma.whatsAppOutbox.count();
+            if (process.env.NODE_ENV === 'production') {
+                const location = await prisma.wholesaler.findUnique({ where: { id: process.env.COMMERCE_WHOLESALER_ID } });
+                if (!location?.isActive || location.deletedAt) throw new Error('Fulfillment location is not ready');
+            }
             if (!redisConnection || typeof redisConnection.ping !== 'function') {
                 throw new Error('Redis connection is not initialized');
             }

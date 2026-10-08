@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 require('dotenv').config();
 process.env.WHATSAPP_PROVIDER = 'meta';
+if(process.env.NODE_ENV === 'production') throw new Error('Smoke fixtures cannot run on production');
+process.env.ENABLE_PROMOTIONS = 'true';
 process.env.META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v26.0';
 process.env.META_CATALOG_ID = process.env.META_CATALOG_ID || 'TEST-CATALOG';
 
@@ -40,6 +42,7 @@ async function run() {
   await controller.processEvent(event(phone, { text: 'catalog' }));
   await controller.processEvent(event(phone, { text: 'categories' }));
   await controller.processEvent(event(phone, { text: 'search rice' }));
+  await controller.processEvent(event(phone, { text: 'catalog' }));
 
   const catalog = await commerce.listCatalog({ limit: 30, page: 1 });
   const productIndex = catalog.products.findIndex(p => p.sku === 'TEST-RICE-5KG');
@@ -77,7 +80,7 @@ async function run() {
   await controller.processEvent(event(phone, { text: 'track ' + order.orderNumber }));
 
   for (const status of ['CONFIRMED', 'PROCESSING', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED']) {
-    await commerce.updateCommerceOrderStatus(order.id, status);
+    await commerce.updateCommerceOrderStatus(order.id, status, { cashReceived: Number(order.totalAmount), actorId: 'smoke-admin' });
   }
 
   const delivered = await prisma.order.findUnique({ where: { id: order.id } });

@@ -8,7 +8,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Security Headers
 const securityHeaders = helmet({
-    contentSecurityPolicy: isProduction ? undefined : false, // Disable CSP in dev for easier frontend debugging
+    contentSecurityPolicy: isProduction ? { directives: { imgSrc: ["'self'", 'https:', 'data:'] } } : false, // Disable CSP in dev for easier frontend debugging
 });
 
 // Compression
@@ -36,8 +36,9 @@ const whatsappLimiter = rateLimit({
 
 // Production Logger
 const httpLogger = pino({
-    level: isProduction ? 'info' : 'debug',
-    transport: isProduction ? undefined : {
+    redact: ['req.headers.authorization', 'req.headers.cookie', 'req.query.token'],
+    level: process.env.NODE_ENV === 'test' ? 'silent' : isProduction ? 'info' : 'debug',
+    transport: (isProduction || process.env.NODE_ENV === 'staging') ? undefined : {
         target: 'pino-pretty',
         options: { colorize: true }
     }
@@ -79,7 +80,7 @@ const verifyTwilioSignature = (req, res, next) => {
         console.warn(`⚠️ Invalid Twilio signature (Bypassed for debugging). URL: ${url}`);
         // For debugging "No Reply" issues, we allow it to proceed but log the warning
         // res.status(403).json({ success: false, error: 'Invalid Twilio signature' });
-        next();
+        return res.status(403).json({ error: 'Invalid Twilio signature' });
     }
 };
 

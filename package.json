@@ -19,7 +19,9 @@
     "smoke:production": "node scripts/production-smoke.js",
     "smoke:providers": "node scripts/provider-smoke.js",
     "seed:free-test": "node scripts/seed-free-test.js",
-    "smoke:cod-flow": "node scripts/cod-flow-smoke.js"
+    "smoke:cod-flow": "node scripts/cod-flow-smoke.js",
+    "test:customer": "node scripts/customer-readiness-test.js",
+    "bootstrap:production": "node scripts/bootstrap-production.js"
   },
   "keywords": [],
   "author": "",

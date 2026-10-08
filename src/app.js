@@ -12,6 +12,7 @@ const { errorHandler } = require('./middleware/errorHandler.middleware');
 const { securityHeaders, compress, apiLimiter, whatsappLimiter, httpLogger } = require('./middleware/production.middleware');
 
 const app = express();
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 0));
 
 // Observability fallbacks (no-op) for test and minimal environments
 let tracingMiddleware = (req, res, next) => next();
@@ -41,7 +42,7 @@ app.use(cors({
     }
     if (configuredOrigins.includes(origin)) return callback(null, true);
     const error = new Error('Origin not allowed by CORS policy');
-    error.status = 403;
+    error.statusCode = 403;
     return callback(error);
   },
   credentials: true,
@@ -80,6 +81,7 @@ app.use((req, res, next) => {
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadDir, { fallthrough: false, maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0 }));
 
+app.use('/assets', express.static(path.join(__dirname, 'public')));
 // Built-in commerce dashboard
 app.get('/commerce-admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'commerce-dashboard.html'));
@@ -98,37 +100,20 @@ try {
   console.log('⏳ Loading Auth routes...');
   app.use('/api/v1/auth', require('./routes/auth.routes'));
 
-  console.log('⏳ Loading Product, Category, Cart routes...');
-  app.use('/api/v1/products', require('./routes/product.routes'));
-  app.use('/api/v1/categories', require('./routes/category.routes'));
   app.use('/api/v1/commerce', require('./routes/commerce.routes'));
   app.use('/api/v1/shopping', require('./routes/shopping.routes'));
-
-  console.log('⏳ Loading Address and Order routes...');
-  app.use('/api/v1/orders', require('./routes/order.routes'));
-
-  console.log('⏳ Loading WhatsApp routes...');
   app.use('/api/v1/whatsapp', require('./routes/whatsapp.routes'));
-
-  console.log('⏳ Loading other system routes...');
-  app.use('/api/v1/pricing', require('./routes/pricing.routes'));
-  app.use('/api/v1/delivery', require('./routes/delivery.routes'));
-  app.use('/api/v1/support', require('./routes/support.routes'));
-  app.use('/api/v1/admin', apiLimiter, require('./routes/admin.routes'));
-  app.use('/api/v1/admin-dashboard', require('./routes/adminDashboard.routes'));
-  app.use('/api/v1/wholesalers', require('./routes/wholesaler.routes'));
-  app.use('/api/v1/vendor-offers', require('./routes/vendorOffer.routes'));
-  app.use('/api/v1/credit', require('./routes/credit.routes'));
-  app.use('/api/v1/bidding', require('./routes/bidding.routes'));
-  app.use('/api/v1/reports', require('./routes/reporting.routes'));
-  app.use('/api/v1/launch-control', require('./routes/launch-control.routes'));
-
-  console.log('✅ All API routes loaded successfully');
-} catch (e) {
-  console.error('❌ Error loading API routes:', e.message);
-  // Log full stack in dev
-  if (process.env.NODE_ENV !== 'production') console.error(e.stack);
+  // Wholesale/credit routes are kept for development, disabled for the COD pilot.
+  if (process.env.ENABLE_LEGACY_ROUTES === 'true' && process.env.NODE_ENV !== 'production') {
+    for (const name of ['product','category','order','pricing','delivery','support','admin','adminDashboard','wholesaler','vendorOffer','credit','bidding','reporting','launch-control']) {
+      app.use('/api/v1/legacy/' + name, require('./routes/' + name + '.routes'));
+    }
+  }
+} catch (error) {
+  // Do not run a healthy-looking server with missing customer routes.
+  throw error;
 }
+if (process.env.NODE_ENV !== 'test') require('./services/whatsappWebhook.service').startWorker();
 
 // Start alert monitoring
 if (process.env.NODE_ENV !== 'test' && startAlertMonitoring) {
@@ -157,7 +142,7 @@ function fallbackToLegacyJobs() {
   }
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && process.env.ENABLE_LEGACY_ROUTES === 'true') {
   const isRedisConfigured = process.env.REDIS_HOST || process.env.REDIS_URL || process.env.NODE_ENV === 'production';
 
   if (isRedisConfigured) {

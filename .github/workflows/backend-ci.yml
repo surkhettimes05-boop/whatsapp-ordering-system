@@ -27,8 +27,18 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/whatsapp_ordering?schema=public
+      REDIS_URL: redis://localhost:6379
       NODE_ENV: test
       JWT_SECRET: ci-only-secret-not-for-production
 
@@ -86,14 +96,22 @@ jobs:
         run: "! grep -q \"routes/address.routes\" src/app.js"
 
       - name: Validate commerce dashboard JavaScript
-        run: node -e "const fs=require('fs'); const h=fs.readFileSync('src/public/commerce-dashboard.html','utf8'); const m=h.match(/<script>([\\s\\S]*?)<\\/script>/); if(!m) process.exit(1); new Function(m[1]);"
+        run: node --check src/public/commerce-dashboard.js
+
+      - name: Customer safety integration gate
+        run: USE_REAL_DATABASE=true npm run test:customer
 
       - name: Verify zero-cost WhatsApp COD flow
         run: USE_REAL_DATABASE=true WHATSAPP_PROVIDER=meta META_GRAPH_VERSION=v26.0 META_CATALOG_ID=TEST-CATALOG npm run smoke:cod-flow
+
+      - name: Verify production startup and readiness
+        run: |
+          sudo install -d -m 0700 -o "$(id -u)" -g "$(id -g)" /var/data/whatsapp-runtime-test
+          RUN_PRODUCTION_RUNTIME_TEST=true node scripts/production-runtime-test.js
 
       - name: Build production Docker image
         run: docker build -t whatsapp-ordering-production .
 
       - name: Validate production fail-fast configuration
         run: |
-          NODE_ENV=production           DATABASE_URL="$DATABASE_URL"           JWT_SECRET="ci-production-secret-0123456789abcdef"           CORS_ORIGIN="https://shop.example.com,https://admin.example.com"           PUBLIC_BASE_URL="https://api.example.com"           PUBLIC_SHOP_URL="https://shop.example.com"           REDIS_URL="redis://example.internal:6379"           WHATSAPP_PROVIDER="meta"           META_GRAPH_VERSION="v26.0"           META_WHATSAPP_PHONE_NUMBER_ID="1234567890"           META_WHATSAPP_ACCESS_TOKEN="ci-meta-access-token"           META_WHATSAPP_VERIFY_TOKEN="ci-meta-verify-token"           META_WHATSAPP_APP_SECRET="ci-meta-app-secret"           META_CATALOG_ID="1234567890"           CATALOG_FEED_TOKEN="ci-catalog-feed-token-0123456789"           UPLOAD_DIR="/var/data/uploads"           REQUIRE_LIVE_PAYMENTS="true"           KHALTI_ENV="production"           KHALTI_SECRET_KEY="ci-khalti-secret"           ESEWA_ENV="production"           ESEWA_PRODUCT_CODE="CI-PRODUCT"           ESEWA_SECRET_KEY="ci-esewa-secret"           node -e "require('./src/config/production-readiness').assertProductionConfiguration(); console.log('production config gate passed')"
+          NODE_ENV=production           DATABASE_URL="$DATABASE_URL"           JWT_SECRET="ci-production-secret-0123456789abcdef"           CORS_ORIGIN="https://shop.example.com,https://admin.example.com"           PUBLIC_BASE_URL="https://api.example.com"           PUBLIC_SHOP_URL="https://shop.example.com"           REDIS_URL="redis://example.internal:6379"           WHATSAPP_PROVIDER="meta"           META_GRAPH_VERSION="v26.0"           META_WHATSAPP_PHONE_NUMBER_ID="1234567890"           META_WHATSAPP_ACCESS_TOKEN="ci-meta-access-token"           META_WHATSAPP_VERIFY_TOKEN="ci-meta-verify-token"           META_WHATSAPP_APP_SECRET="ci-meta-app-secret"           META_CATALOG_ID="1234567890"           CATALOG_FEED_TOKEN="ci-catalog-feed-token-0123456789"           UPLOAD_DIR="/var/data/uploads" COMMERCE_WHOLESALER_ID="pasalho-fulfillment" WHATSAPP_STATUS_TEMPLATE="pasalho_order_status"           REQUIRE_LIVE_PAYMENTS="false"           node -e "require('./src/config/production-readiness').assertProductionConfiguration(); console.log('production config gate passed')"

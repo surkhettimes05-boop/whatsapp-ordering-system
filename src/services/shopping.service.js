@@ -95,7 +95,7 @@ class ShoppingService {
 
   async resolveServiceArea(query, address = null) {
     const areas = await prisma.serviceArea.findMany({ where: { isActive: true } });
-    if (!areas.length) return { configured: false, serviceable: true, area: null };
+    if (!areas.length) return { configured: false, serviceable: false, area: null };
 
     const inputs = [
       query,
@@ -119,7 +119,7 @@ class ShoppingService {
       for (const input of inputs) {
         if (exacts.includes(input)) score = Math.max(score, 100);
         for (const exact of exacts) {
-          if (input.includes(exact) || exact.includes(input)) score = Math.max(score, 70);
+          if (input.length >= 3 && input.includes(exact)) score = Math.max(score, 70);
         }
         for (const keyword of keywords) {
           if (input.includes(keyword)) score = Math.max(score, 50);
@@ -132,6 +132,7 @@ class ShoppingService {
   }
 
   async createServiceArea(data) {
+    if (![data.minOrder || 0, data.deliveryFee || 0].every(v => Number.isFinite(Number(v)) && Number(v) >= 0)) throw new Error('Delivery fee and minimum order must be nonnegative');
     if (!data.code) throw new Error('Service area code is required');
     const payload = {
       name: data.name || null,
@@ -200,6 +201,7 @@ class ShoppingService {
   }
 
   async listOffers(activeOnly = true) {
+    if (process.env.ENABLE_PROMOTIONS !== 'true') return [];
     const now = new Date();
     return prisma.commerceOffer.findMany({
       where: activeOnly ? { isActive: true, startsAt: { lte: now }, endsAt: { gte: now } } : {},
@@ -209,6 +211,7 @@ class ShoppingService {
   }
 
   async setCartCoupon(retailerId, code) {
+    if (process.env.ENABLE_PROMOTIONS !== 'true') throw new Error('Promotions are disabled');
     const cart = await prisma.cart.findUnique({ where: { activeKey: retailerId } });
     if (!cart) throw new Error('Cart is empty');
     const normalized = code ? String(code).trim().toUpperCase() : null;
@@ -290,7 +293,7 @@ class ShoppingService {
     const service = (address || options.serviceAreaCode)
       ? await this.resolveServiceArea(options.serviceAreaCode, address)
       : { configured: false, serviceable: true, area: null };
-    if (service.configured && !service.serviceable) throw new Error('Delivery is not available to this address');
+    if (!service.serviceable) throw new Error('Delivery is not available to this address');
 
     const subtotal = cart.items.reduce((sum, item) => sum + n(item.product.fixedPrice) * item.quantity, 0);
     const mrpTotal = cart.items.reduce((sum, item) => {
@@ -303,7 +306,7 @@ class ShoppingService {
     if (subtotal < minOrder) throw new Error(`Minimum order for this area is Rs. ${minOrder}`);
 
     const couponCode = options.couponCode !== undefined ? options.couponCode : cart.couponCode;
-    const applied = await this.eligibleOffer(retailerId, cart, couponCode || null, deliveryFee);
+    const applied = process.env.ENABLE_PROMOTIONS === 'true' ? await this.eligibleOffer(retailerId, cart, couponCode || null, deliveryFee) : null;
     const discountAmount = applied?.discount || 0;
     const finalDeliveryFee = applied?.offer.type === 'FREE_DELIVERY' ? Math.max(0, deliveryFee - discountAmount) : deliveryFee;
     const merchandiseDiscount = applied?.offer.type === 'FREE_DELIVERY' ? 0 : discountAmount;
@@ -340,106 +343,102 @@ class ShoppingService {
   }
 
   async checkout(retailerId, data = {}) {
-    const quote = await this.quote(retailerId, {
-      addressId: data.addressId,
-      serviceAreaCode: data.serviceAreaCode,
-      couponCode: data.couponCode
-    });
-    if (!quote.address) throw new Error('A saved delivery address is required');
-
-    const paymentProvider = data.paymentProvider ? String(data.paymentProvider).toLowerCase() : null;
-    const paymentMode = paymentProvider ? 'ONLINE' : 'COD';
-    if (paymentProvider && !paymentService.isConfigured(paymentProvider)) {
-      throw new Error(`${paymentProvider.toUpperCase()} payment is not configured`);
-    }
-
+    if (data.paymentProvider || (data.paymentMode && data.paymentMode !== 'COD')) throw new Error('Only cash on delivery is enabled');
+    const paymentProvider = null;
+    const paymentMode = 'COD';
+    let quote;
     const order = await prisma.$transaction(async tx => {
-      const cart = await tx.cart.findUnique({
-        where: { activeKey: retailerId },
-        include: { retailer: true, items: { include: { product: true } } }
-      });
-      if (!cart || !cart.items.length) throw new Error('Cart is empty');
-      const liveSubtotal = cart.items.reduce((sum, item) => sum + n(item.product.fixedPrice) * item.quantity, 0);
-      if (Math.abs(liveSubtotal - quote.subtotal) > 0.001) {
-        throw new Error('Cart changed during checkout. Please review the cart again.');
-      }
-      const unavailable = cart.items.find(item => !item.product.isActive || item.product.deletedAt);
-      if (unavailable) throw new Error(`Product is no longer available: ${unavailable.product.name}`);
-
-      const claimed = await tx.cart.updateMany({
-        where: { id: cart.id, activeKey: retailerId, status: 'ACTIVE' },
-        data: {
-          activeKey: null,
-          status: 'CHECKED_OUT',
-          checkedOutAt: new Date(),
-          selectedAddressId: quote.address.id,
-          couponCode: quote.couponCode,
-          paymentProvider
+      const context = require('../config/commerce-context');
+      return context.run({ ...(context.getStore() || {}), tx }, async () => {
+        await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
+        if (data.cartId) {
+          const previous = await tx.cart.findUnique({ where: { id: data.cartId } });
+          if (!previous || previous.retailerId !== retailerId) throw new Error('Cart not found');
+          if (previous.checkoutOrderId) return tx.order.findUnique({ where: { id: previous.checkoutOrderId }, include: { retailer: true, items: { include: { product: true } } } });
+          if (previous.activeKey !== retailerId) throw new Error('Cart is not active');
         }
-      });
-      if (claimed.count !== 1) throw new Error('Cart was already checked out');
+        quote = await this.quote(retailerId, { addressId: data.addressId, serviceAreaCode: data.serviceAreaCode, couponCode: data.couponCode });
+        if (!quote.address) throw new Error('A saved delivery address is required');
+        const cart = await tx.cart.findUnique({
+          where: { activeKey: retailerId },
+          include: { retailer: true, items: { include: { product: true } } }
+        });
+        if (!cart || !cart.items.length) throw new Error('Cart is empty');
+        if (cart.retailer.status !== 'ACTIVE' || cart.retailer.deletedAt) throw new Error('Customer account is not active');
+        const liveSubtotal = cart.items.reduce((sum, item) => sum + n(item.product.fixedPrice) * item.quantity, 0);
+        if (Math.abs(liveSubtotal - quote.subtotal) > 0.001) {
+          throw new Error('Cart changed during checkout. Please review the cart again.');
+        }
+        const unavailable = cart.items.find(item => !item.product.isActive || item.product.deletedAt);
+        if (unavailable) throw new Error(`Product is no longer available: ${unavailable.product.name}`);
 
-      const created = await tx.order.create({
-        data: {
-          orderNumber: orderNumber(),
-          retailerId,
-          subtotal: quote.subtotal,
-          discountAmount: quote.discountAmount,
-          deliveryFee: quote.deliveryFee,
-          savingsAmount: quote.totalSavings,
-          totalAmount: quote.totalAmount,
-          paymentMode,
-          paymentStatus: 'PENDING',
-          paymentProvider,
-          couponCode: quote.couponCode,
-          serviceAreaCode: quote.serviceArea?.code || null,
-          sourceChannel: data.sourceChannel || 'WHATSAPP',
-          status: 'CREATED',
-          deliveryName: quote.address.recipientName || cart.retailer.ownerName || cart.retailer.pasalName,
-          deliveryPhone: quote.address.phone || cart.retailer.phoneNumber,
-          deliveryAddress: [
-            quote.address.addressLine1,
-            quote.address.city,
-            quote.address.district,
-            quote.address.postalCode
-          ].filter(Boolean).join(', '),
-          customerNotes: data.customerNotes || null,
-          items: {
-            create: cart.items.map(item => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              priceAtOrder: item.product.fixedPrice
-            }))
-          }
-        },
-        include: { retailer: true, items: { include: { product: true } } }
-      });
-
-      await tx.cart.update({ where: { id: cart.id }, data: { checkoutOrderId: created.id } });
-
-      if (quote.offer) {
-        await tx.commerceOfferRedemption.create({
+        const claimed = await tx.cart.updateMany({
+          where: { id: cart.id, activeKey: retailerId, status: 'ACTIVE' },
           data: {
-            offerId: quote.offer.id,
-            retailerId,
-            orderId: created.id,
-            amount: quote.discountAmount
+            activeKey: null,
+            status: 'CHECKED_OUT',
+            checkedOutAt: new Date(),
+            selectedAddressId: quote.address.id,
+            couponCode: quote.couponCode,
+            paymentProvider
           }
         });
-      }
-      return created;
-    });
+        if (claimed.count !== 1) throw new Error('Cart was already checked out');
 
-    let payment = null;
-    let paymentError = null;
-    if (paymentProvider) {
-      try {
-        payment = await paymentService.initiate(order.id, paymentProvider);
-      } catch (error) {
-        paymentError = error.message;
-      }
-    }
-    return { order, quote, payment, paymentError };
+        const created = await tx.order.create({
+          data: {
+            orderNumber: orderNumber(),
+            retailerId,
+            subtotal: quote.subtotal,
+            discountAmount: quote.discountAmount,
+            deliveryFee: quote.deliveryFee,
+            savingsAmount: quote.totalSavings,
+            totalAmount: quote.totalAmount,
+            paymentMode,
+            paymentStatus: 'PENDING',
+            paymentProvider,
+            couponCode: quote.couponCode,
+            serviceAreaCode: quote.serviceArea?.code || null,
+            sourceChannel: data.sourceChannel || 'WHATSAPP',
+            status: 'CREATED',
+            deliveryName: quote.address.recipientName || cart.retailer.ownerName || cart.retailer.pasalName,
+            deliveryPhone: quote.address.phone || cart.retailer.phoneNumber,
+            deliveryAddress: [
+              quote.address.addressLine1,
+              quote.address.city,
+              quote.address.district,
+              quote.address.postalCode
+            ].filter(Boolean).join(', '),
+            customerNotes: data.customerNotes || null,
+            items: {
+              create: cart.items.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                priceAtOrder: item.product.fixedPrice
+              }))
+            }
+          },
+          include: { retailer: true, items: { include: { product: true } } }
+        });
+
+        await require('./commerceInventory.service').reserve(tx, created, cart.items);
+        await tx.cart.update({ where: { id: cart.id }, data: { checkoutOrderId: created.id } });
+
+        if (quote.offer) {
+          await tx.commerceOfferRedemption.create({
+            data: {
+              offerId: quote.offer.id,
+              retailerId,
+              orderId: created.id,
+              amount: quote.discountAmount
+            }
+          });
+        }
+        return created;
+      });
+    }, { timeout: 30000 });
+
+    return { order, quote, payment: null, paymentError: null };
   }
 }
 

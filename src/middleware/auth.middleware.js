@@ -4,21 +4,19 @@ const prisma = require('../config/database');
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    console.log('🔐 authenticate called - authHeader present:', !!authHeader);
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ success: false, error: 'No token' });
     }
 
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('🔐 token decoded:', decoded && decoded.userId ? decoded.userId : 'no-id');
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, phoneNumber: true, name: true, role: true }
+      select: { id: true, phoneNumber: true, whatsappNumber: true, name: true, role: true, status: true, deletedAt: true }
     });
 
-    if (!user) return res.status(401).json({ success: false, error: 'User invalid' });
+    if (!user || user.status !== 'ACTIVE' || user.deletedAt) return res.status(401).json({ success: false, error: 'User invalid' });
 
     req.user = user;
     next();

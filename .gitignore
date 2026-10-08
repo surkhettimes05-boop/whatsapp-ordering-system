@@ -57,3 +57,5 @@ nginx/ssl/
 
 # Prisma
 # backend/prisma/migrations/ <-- ALLOWED NOW
+
+!prisma/migrations/**/migration.sql

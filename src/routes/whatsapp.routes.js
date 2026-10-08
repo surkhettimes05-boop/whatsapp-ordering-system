@@ -38,20 +38,16 @@ router.get('/webhook', webhookRateLimiter, (req, res) => {
   return res.status(200).send('OK');
 });
 
-router.post('/webhook', webhookRateLimiter, verifyProviderSignature, (req, res) => {
-  res.status(200).send('EVENT_RECEIVED');
-
-  const event = webhookService.normalizeInbound(req);
-  if (!event) return;
-
-  whatsappController.handleIncomingEvent(event).catch(error => {
-    logger.error('Error processing WhatsApp event', {
-      error: error.message,
-      stack: error.stack,
-      provider: webhookService.provider(),
-      messageId: event.providerMessageId
-    });
-  });
+router.post('/webhook', webhookRateLimiter, verifyProviderSignature, async (req, res) => {
+  try {
+    // Acknowledge only after every message in the provider batch is durable.
+    await webhookService.persistEvents(webhookService.normalizeAll(req));
+    res.status(200).send('EVENT_RECEIVED');
+    if (process.env.NODE_ENV !== 'test') setImmediate(() => webhookService.tick());
+  } catch (error) {
+    logger.error('Failed to persist WhatsApp webhook', { error: error.message });
+    res.status(503).send('Retry later');
+  }
 });
 
 router.get('/test', (req, res) => {

@@ -13,7 +13,9 @@ class AuthService {
   }
 
   async register(userData) {
-    const { phoneNumber, name, password, email, role } = userData;
+    const { name, password, email } = userData;
+    const phoneNumber = String(userData.phoneNumber).replace(/^\+/, '');
+    if (userData.role && userData.role !== 'RETAILER') throw new Error('Public registration is for customers only');
 
     const existingUser = await prisma.user.findUnique({ where: { phoneNumber } });
     if (existingUser) throw new Error('User exists');
@@ -31,7 +33,8 @@ class AuthService {
         name,
         email,
         passwordHash,
-        role: role || 'ADMIN'
+        whatsappNumber: phoneNumber,
+        role: 'RETAILER'
       },
       select: { id: true, phoneNumber: true, name: true, role: true }
     });
@@ -41,8 +44,9 @@ class AuthService {
   }
 
   async login(phoneNumber, password) {
+    phoneNumber = String(phoneNumber).replace(/^\+/, '');
     const user = await prisma.user.findUnique({ where: { phoneNumber } });
-    if (!user) throw new Error('Invalid credentials');
+    if (!user || user.status !== 'ACTIVE' || user.deletedAt) throw new Error('Invalid credentials');
 
     const isValid = await bcrypt.compare(password, user.passwordHash || '');
     if (!isValid) throw new Error('Invalid credentials');
@@ -63,7 +67,8 @@ class AuthService {
     // simplified update
     return prisma.user.update({
       where: { id: userId },
-      data: { name: data.name, email: data.email }
+      data: { name: data.name, email: data.email },
+      select: { id: true, name: true, phoneNumber: true, email: true, role: true }
     });
   }
 

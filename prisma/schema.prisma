@@ -183,7 +183,7 @@ model User {
 	name          String
 	email         String?        @unique
 	passwordHash  String?
-	role          UserRole       @default(ADMIN)
+	role          UserRole       @default(RETAILER)
 	status        UserStatus     @default(ACTIVE)
 	deletedAt     DateTime?      // Soft delete
 	lastLoginAt   DateTime?
@@ -220,6 +220,7 @@ model Retailer {
 	address            String?
 	latitude           Float?
 	longitude          Float?
+	catalogProductIds  String?
 	conversationState  String?
 	creditStatus       CreditStatus               @default(ACTIVE)
 	creditPausedAt     DateTime?
@@ -1197,10 +1198,41 @@ model WhatsAppInboundEvent {
 	messageType       String?
 	payload           String
 	processedAt       DateTime?
+	attempts          Int      @default(0)
+	nextAttemptAt     DateTime @default(now())
+	lastError         String?
 	createdAt         DateTime @default(now())
 
 	@@index([provider])
 	@@index([sender])
 	@@index([createdAt])
 	@@map("whatsapp_inbound_events")
+}
+
+model WhatsAppOutbox {
+  id String @id @default(cuid())
+  payload String
+  sender String
+  sentAt DateTime?
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  lastError String?
+  createdAt DateTime @default(now())
+  @@index([sentAt, nextAttemptAt])
+  @@map("whatsapp_outbox")
+}
+model CommerceInventoryEvent {
+  id String @id @default(cuid())
+  inventoryId String
+  orderId String?
+  kind String
+  quantity Int
+  physicalDelta Int
+  reservedDelta Int
+  reference String @unique
+  actorId String?
+  createdAt DateTime @default(now())
+  @@index([inventoryId, createdAt])
+  @@index([orderId])
+  @@map("commerce_inventory_events")
 }

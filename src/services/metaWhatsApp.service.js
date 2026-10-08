@@ -18,11 +18,13 @@ function endpoint() {
 
 async function graphSend(payload) {
   if (!configured()) {
+    if (process.env.NODE_ENV === 'production') throw new Error('Meta credentials are not configured');
     logger.info('[MOCK META] WhatsApp payload', { payload });
     return { success: true, mock: true, payload };
   }
 
   const response = await fetch(endpoint(), {
+    signal: AbortSignal.timeout(10000),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

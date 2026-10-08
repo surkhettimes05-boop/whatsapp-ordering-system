@@ -2,8 +2,6 @@ const crypto = require('crypto');
 const prisma = require('../config/database');
 
 const SALE_STATUSES = ['DELIVERED'];
-const PAYMENT_MODES = new Set(['COD', 'ONLINE', 'CHEQUE', 'BANK_TRANSFER', 'CASH']);
-const ORDER_CHANNELS = new Set(['WHATSAPP', 'ADMIN', 'API']);
 
 function slugify(value) {
   return String(value || '')
@@ -32,7 +30,7 @@ function serializeProduct(product) {
     0
   );
   const stockStatus = inventories.length === 0
-    ? 'UNKNOWN'
+    ? 'OUT'
     : availableUnits <= 0
       ? 'OUT'
       : availableUnits <= 10 ? 'LOW' : 'AVAILABLE';
@@ -104,7 +102,7 @@ function orderNumber() {
 
 function rangeStart(range, explicitDate) {
   if (explicitDate) {
-    const start = new Date(explicitDate + 'T00:00:00.000Z');
+    const start = new Date(explicitDate + 'T00:00:00+05:45');
     if (Number.isNaN(start.getTime())) throw new Error('Invalid date');
     const end = new Date(start);
     end.setUTCDate(end.getUTCDate() + 1);
@@ -114,8 +112,8 @@ function rangeStart(range, explicitDate) {
   if (range === 'all') return { start: null, end: null };
   const now = new Date();
   if (range === 'today') {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
+    const day = new Date(now.getTime() + 345 * 60000).toISOString().slice(0,10);
+    const start = new Date(day + 'T00:00:00+05:45');
     return { start, end: null };
   }
   const days = range === '7d' ? 7 : 30;
@@ -145,7 +143,7 @@ class CommerceService {
         include: {
           category: true,
           wholesalerProducts: {
-            where: { isAvailable: true },
+            where: { isAvailable: true, wholesalerId: process.env.COMMERCE_WHOLESALER_ID || '__unconfigured__', wholesaler: { isActive: true, deletedAt: null } },
             select: { stock: true, reservedStock: true }
           }
         },
@@ -198,6 +196,7 @@ class CommerceService {
     if (!data.name || !data.categoryId || data.fixedPrice == null) {
       throw new Error('name, categoryId and fixedPrice are required');
     }
+    if (!Number.isFinite(Number(data.fixedPrice)) || Number(data.fixedPrice) <= 0) throw new Error('Price must be positive');
     if (!data.sku) throw new Error('SKU is required for new catalog products');
 
     const sku = String(data.sku).trim().toUpperCase();
@@ -228,6 +227,7 @@ class CommerceService {
   }
 
   async updateProduct(id, data) {
+    if (data.fixedPrice !== undefined && (!Number.isFinite(Number(data.fixedPrice)) || Number(data.fixedPrice) <= 0)) throw new Error('Price must be positive');
     const update = {};
     for (const key of ['name', 'brand', 'unit', 'packSize', 'description', 'imageUrl', 'categoryId', 'metaRetailerId']) {
       if (data[key] !== undefined) update[key] = data[key] || null;
@@ -262,14 +262,18 @@ class CommerceService {
   }
 
   async getCart(retailerId) {
-    return cartSummary(await this.getOrCreateCart(retailerId));
+    return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
+      return cartSummary(await this.getOrCreateCart(retailerId, tx));
+    });
   }
 
   async addCartItem(retailerId, productId, quantity = 1) {
     const qty = Number(quantity);
-    if (!Number.isInteger(qty) || qty <= 0) throw new Error('Quantity must be a positive integer');
+    if (!Number.isSafeInteger(qty) || qty <= 0 || qty > 10000) throw new Error('Quantity must be a positive integer');
 
     return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
       const product = await tx.product.findFirst({
         where: { id: productId, isActive: true, deletedAt: null }
       });
@@ -292,8 +296,9 @@ class CommerceService {
 
   async setCartItem(retailerId, productId, quantity) {
     const qty = Number(quantity);
-    if (!Number.isInteger(qty)) throw new Error('Quantity must be an integer');
+    if (!Number.isSafeInteger(qty) || qty < 0 || qty > 10000) throw new Error('Quantity must be an integer');
     return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
       const cart = await this.getOrCreateCart(retailerId, tx);
       if (qty <= 0) {
         await tx.cartItem.deleteMany({ where: { cartId: cart.id, productId } });
@@ -315,78 +320,17 @@ class CommerceService {
   }
 
   async clearCart(retailerId) {
-    const cart = await this.getOrCreateCart(retailerId);
-    await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-    return this.getCart(retailerId);
+    return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
+      const cart = await this.getOrCreateCart(retailerId, tx);
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      return cartSummary(await tx.cart.findUnique({ where: { id: cart.id }, include: { items: { include: { product: true } } } }));
+    });
   }
 
   async checkoutCart(data) {
-    const paymentMode = PAYMENT_MODES.has(data.paymentMode) ? data.paymentMode : 'COD';
-    const sourceChannel = ORDER_CHANNELS.has(data.sourceChannel) ? data.sourceChannel : 'WHATSAPP';
-
-    return prisma.$transaction(async tx => {
-      const cart = await tx.cart.findUnique({
-        where: { activeKey: data.retailerId },
-        include: {
-          retailer: true,
-          items: { include: { product: true }, orderBy: { createdAt: 'asc' } }
-        }
-      });
-      if (!cart || cart.items.length === 0) throw new Error('Cart is empty');
-
-      const invalid = cart.items.find(item => !item.product.isActive || item.product.deletedAt);
-      if (invalid) throw new Error(`Product is no longer available: ${invalid.product.name}`);
-
-      const claimed = await tx.cart.updateMany({
-        where: { id: cart.id, status: 'ACTIVE', activeKey: data.retailerId },
-        data: { status: 'CHECKED_OUT', activeKey: null, checkedOutAt: new Date() }
-      });
-      if (claimed.count !== 1) throw new Error('Cart was already checked out');
-
-      const totalAmount = cart.items.reduce(
-        (sum, item) => sum + Number(item.product.fixedPrice) * item.quantity,
-        0
-      );
-
-      const order = await tx.order.create({
-        data: {
-          orderNumber: orderNumber(),
-          retailerId: data.retailerId,
-          subtotal: totalAmount,
-          discountAmount: 0,
-          totalAmount,
-          paymentMode,
-          paymentStatus: paymentMode === 'COD' ? 'PENDING' : 'PENDING',
-          sourceChannel,
-          status: 'CREATED',
-          deliveryName: data.deliveryName || cart.retailer.ownerName || cart.retailer.pasalName,
-          deliveryPhone: data.deliveryPhone || cart.retailer.phoneNumber,
-          deliveryAddress: data.deliveryAddress || cart.retailer.address,
-          customerNotes: data.customerNotes || null,
-          items: {
-            create: cart.items.map(item => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              priceAtOrder: item.product.fixedPrice
-            }))
-          }
-        },
-        include: {
-          retailer: true,
-          items: { include: { product: true } }
-        }
-      });
-
-      await tx.cart.update({ where: { id: cart.id }, data: { checkoutOrderId: order.id } });
-      return {
-        ...order,
-        totalAmount: Number(order.totalAmount),
-        items: order.items.map(item => ({
-          ...item,
-          priceAtOrder: Number(item.priceAtOrder)
-        }))
-      };
-    });
+    const result = await require('./shopping.service').checkout(data.retailerId, data);
+    return result.order;
   }
 
   async listOffers(limit = 20) {
@@ -395,7 +339,7 @@ class CommerceService {
       include: {
         category: true,
         wholesalerProducts: {
-          where: { isAvailable: true },
+          where: { isAvailable: true, wholesalerId: process.env.COMMERCE_WHOLESALER_ID || '__unconfigured__', wholesaler: { isActive: true, deletedAt: null } },
           select: { stock: true, reservedStock: true }
         }
       },
@@ -414,6 +358,7 @@ class CommerceService {
     }
 
     return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
       const cart = await this.getOrCreateCart(retailerId, tx);
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
@@ -429,8 +374,10 @@ class CommerceService {
             ]
           }
         });
-        if (!product) continue;
-        const quantity = Math.max(1, Number(item.quantity || 1));
+        if (!product) throw new Error('One of the catalog items is unavailable. Refresh the catalog.');
+        if (item.currency && item.currency !== 'NPR') throw new Error('Only NPR orders are accepted');
+        const quantity = Number(item.quantity);
+        if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 10000) throw new Error('Quantity must be between 1 and 10000');
         await tx.cartItem.create({
           data: {
             cartId: cart.id,
@@ -462,6 +409,7 @@ class CommerceService {
     if (!previous) throw new Error('No previous order found');
 
     return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM retailers WHERE id = ${retailerId} FOR UPDATE`;
       const cart = await this.getOrCreateCart(retailerId, tx);
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
       for (const item of previous.items) {
@@ -767,38 +715,59 @@ class CommerceService {
     };
   }
 
-  async updateCommerceOrderStatus(orderId, nextStatus) {
-    const transitions = {
-      CREATED: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['PROCESSING', 'CANCELLED'],
-      PROCESSING: ['PACKED', 'CANCELLED'],
-      PACKED: ['OUT_FOR_DELIVERY', 'CANCELLED'],
-      OUT_FOR_DELIVERY: ['DELIVERED', 'FAILED', 'CANCELLED'],
-      FAILED: ['PROCESSING', 'CANCELLED'],
-      DELIVERED: [],
-      CANCELLED: []
-    };
+  async listOperationalOrders(filters = {}) {
+    const page = Math.max(1, Math.floor(Number(filters.page) || 1));
+    const status = filters.status || 'ACTIVE';
+    const where = status === 'ALL' ? {} : status === 'ACTIVE'
+      ? { status: { notIn: ['DELIVERED', 'CANCELLED'] } } : { status };
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({ where, include: { retailer: true, items: { include: { product: true } } }, orderBy: { createdAt: 'asc' }, take: 20, skip: (page - 1) * 20 }),
+      prisma.order.count({ where })
+    ]);
+    return { orders, total, page, pages: Math.max(1, Math.ceil(total / 20)) };
+  }
 
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: { retailer: true, items: { include: { product: true } } }
-    });
+  async getOperationalOrder(id) {
+    const order = await prisma.order.findUnique({ where: { id }, include: { retailer: true, items: { include: { product: true } } } });
     if (!order) throw new Error('Order not found');
+    return order;
+  }
 
-    const allowed = transitions[order.status] || [];
-    if (!allowed.includes(nextStatus)) {
-      throw new Error(`Invalid commerce transition: ${order.status} → ${nextStatus}`);
-    }
-
-    const data = { status: nextStatus };
-    if (nextStatus === 'CONFIRMED') data.confirmedAt = new Date();
-    if (nextStatus === 'DELIVERED') data.deliveredAt = new Date();
-    if (nextStatus === 'FAILED') data.failedAt = new Date();
-
-    return prisma.order.update({
-      where: { id: orderId },
-      data,
-      include: { retailer: true, items: { include: { product: true } } }
+  async updateCommerceOrderStatus(orderId, nextStatus, options = {}) {
+    const transitions = {
+      CREATED: ['CONFIRMED', 'CANCELLED'], CONFIRMED: ['PROCESSING', 'CANCELLED'],
+      PROCESSING: ['PACKED', 'CANCELLED'], PACKED: ['OUT_FOR_DELIVERY', 'CANCELLED'],
+      OUT_FOR_DELIVERY: ['DELIVERED', 'FAILED', 'CANCELLED'], FAILED: ['PROCESSING', 'CANCELLED'],
+      DELIVERED: [], CANCELLED: []
+    };
+    return prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} FOR UPDATE`;
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { retailer: true, items: true } });
+      if (!order) throw new Error('Order not found');
+      if (order.status === nextStatus) return order;
+      if (!(transitions[order.status] || []).includes(nextStatus)) throw new Error(`Invalid commerce transition: ${order.status} → ${nextStatus}`);
+      const data = { status: nextStatus };
+      if (nextStatus === 'CONFIRMED') data.confirmedAt = new Date();
+      if (nextStatus === 'FAILED') data.failedAt = new Date();
+      if (nextStatus === 'CANCELLED') {
+        await require('./commerceInventory.service').settle(tx, order, 'RELEASE', options.actorId);
+        data.paymentStatus = 'CANCELLED';
+      }
+      if (nextStatus === 'DELIVERED') {
+        if (order.paymentMode !== 'COD') throw new Error('Only COD delivery is supported');
+        if (!options.actorId || options.cashReceived == null || !Number.isFinite(Number(options.cashReceived)) || Number(options.cashReceived) !== Number(order.totalAmount)) throw new Error('Confirm the exact COD cash received before completing delivery');
+        await require('./commerceInventory.service').settle(tx, order, 'FULFILL', options.actorId);
+        const reference = 'COD:' + order.id;
+        await tx.commercePaymentTransaction.create({ data: { orderId: order.id, provider: 'cash', amount: order.totalAmount, status: 'PAID', externalId: reference, metadata: JSON.stringify({ actorId: options.actorId, collectedAt: new Date().toISOString() }) } });
+        data.deliveredAt = new Date(); data.paymentStatus = 'PAID'; data.paymentReference = reference;
+      }
+      const updated = await tx.order.update({ where: { id: orderId }, data, include: { retailer: true, items: { include: { product: true } } } });
+      // Durable customer notification committed with the status change.
+      const context = require('../config/commerce-context');
+      await context.run({ tx }, () => process.env.WHATSAPP_STATUS_TEMPLATE
+        ? require('./whatsapp.service').sendTemplate(order.retailer.whatsappNumber, process.env.WHATSAPP_STATUS_TEMPLATE, process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en', [{ type: 'body', parameters: [{ type: 'text', text: order.orderNumber }, { type: 'text', text: nextStatus.replaceAll('_', ' ') }] }])
+        : require('./whatsapp.service').sendMessage(order.retailer.whatsappNumber, `Order ${order.orderNumber}: ${nextStatus.replaceAll('_', ' ')}`, { immediate: true }));
+      return updated;
     });
   }
 
