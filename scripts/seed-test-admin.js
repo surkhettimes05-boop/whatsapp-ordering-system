@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../src/config/database');
 
 async function main() {
-  const phone = String(process.env.TEST_ADMIN_PHONE || '').trim();
+  const phone = String(process.env.TEST_ADMIN_PHONE || '').trim().replace(/^\+/, '');
   const password = process.env.TEST_ADMIN_PASSWORD || '';
   if (!/^\+?9779[78]\d{8}$/.test(phone) || password.length < 10) {
     throw new Error('Set TEST_ADMIN_PHONE to a Nepal mobile and TEST_ADMIN_PASSWORD to at least 10 characters');
